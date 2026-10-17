@@ -18,7 +18,7 @@ import (
 
 const (
 	// FormatVersion identifies the on-disk schema, independently of releases.
-	FormatVersion = 1
+	FormatVersion = 2
 	applicationID = 0x524c4442 // RLDB
 )
 
@@ -37,6 +37,22 @@ type DB struct {
 	sql    *sql.DB
 	path   string
 	closed bool
+	now    func() time.Time
+}
+
+// Option configures a handle. Production defaults to time.Now.
+type Option func(*DB) error
+
+// WithClock makes event-time acceptance deterministic for tests and replay tools.
+// A persisted watermark prevents a clock rollback from reopening closed buckets.
+func WithClock(now func() time.Time) Option {
+	return func(db *DB) error {
+		if now == nil {
+			return errors.New("rollupdb: nil clock")
+		}
+		db.now = now
+		return nil
+	}
 }
 
 // Info describes a database without exposing its storage connection.
@@ -51,7 +67,7 @@ type Info struct {
 
 // Create creates a new database with owner-only permissions. It never overwrites
 // an existing path, including an empty file or a symlink.
-func Create(ctx context.Context, path string) (*DB, error) {
+func Create(ctx context.Context, path string, options ...Option) (*DB, error) {
 	if path == "" {
 		return nil, errors.New("rollupdb: empty path")
 	}
@@ -67,7 +83,7 @@ func Create(ctx context.Context, path string) (*DB, error) {
 		_ = os.Remove(abs)
 		return nil, err
 	}
-	db, err := open(ctx, abs, true)
+	db, err := open(ctx, abs, true, false, options...)
 	if err != nil {
 		_ = os.Remove(abs)
 		return nil, err
@@ -77,7 +93,7 @@ func Create(ctx context.Context, path string) (*DB, error) {
 
 // Open opens an existing database. It never creates a missing file or adopts an
 // arbitrary SQLite database. Unsupported formats are rejected before migration.
-func Open(ctx context.Context, path string) (*DB, error) {
+func Open(ctx context.Context, path string, options ...Option) (*DB, error) {
 	if path == "" {
 		return nil, errors.New("rollupdb: empty path")
 	}
@@ -85,10 +101,27 @@ func Open(ctx context.Context, path string) (*DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	return open(ctx, abs, false)
+	return open(ctx, abs, false, false, options...)
 }
 
-func open(ctx context.Context, path string, fresh bool) (_ *DB, err error) {
+// Migrate explicitly upgrades a revision-1 file to revision 2 in one transaction.
+// Take a backup first. A current file is a no-op; unknown formats are refused.
+func Migrate(ctx context.Context, path string) error {
+	if path == "" {
+		return errors.New("rollupdb: empty path")
+	}
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return err
+	}
+	db, err := open(ctx, abs, false, true)
+	if err != nil {
+		return err
+	}
+	return db.Close()
+}
+
+func open(ctx context.Context, path string, fresh, upgrade bool, options ...Option) (_ *DB, err error) {
 	fi, err := os.Stat(path)
 	if err != nil {
 		return nil, err
@@ -137,6 +170,12 @@ func open(ctx context.Context, path string, fresh bool) (_ *DB, err error) {
 	if err = s.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil {
 		return nil, err
 	}
+	if version == 1 && upgrade {
+		if err = migrateV2(ctx, s); err != nil {
+			return nil, err
+		}
+		version = FormatVersion
+	}
 	if version != FormatVersion {
 		return nil, fmt.Errorf("%w: got %d, support %d", ErrFormatVersion, version, FormatVersion)
 	}
@@ -152,7 +191,16 @@ func open(ctx context.Context, path string, fresh bool) (_ *DB, err error) {
 	if mode != "wal" {
 		return nil, fmt.Errorf("rollupdb: expected WAL journal mode, got %q", mode)
 	}
-	return &DB{sql: s, path: path}, nil
+	db := &DB{sql: s, path: path, now: time.Now}
+	for _, option := range options {
+		if option == nil {
+			return nil, errors.New("rollupdb: nil option")
+		}
+		if err = option(db); err != nil {
+			return nil, err
+		}
+	}
+	return db, nil
 }
 
 func initialize(ctx context.Context, s *sql.DB) error {
@@ -183,6 +231,9 @@ PRAGMA user_version = 1;
 `
 	if _, err = tx.ExecContext(ctx, schema); err != nil {
 		return fmt.Errorf("initialize schema: %w", err)
+	}
+	if _, err = tx.ExecContext(ctx, schemaV2); err != nil {
+		return err
 	}
 	if _, err = tx.ExecContext(ctx, "INSERT INTO store_meta VALUES (1, ?, ?)", hex.EncodeToString(random[:]), time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
 		return err

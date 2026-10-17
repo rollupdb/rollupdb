@@ -1,6 +1,6 @@
 RollupDB Project Plan
 
-Status: Session 1 foundation implemented; see RESUME.md for checkpoint and validation status.
+Status: Session 2 exact aggregation, durable ingestion and single-tier queries implemented; see RESUME.md for checkpoint and validation status.
 Created: October 17, 2026.
 Code repository: https://github.com/rollupdb/rollupdb
 Future website: https://rollupdb.com
@@ -84,5 +84,5 @@ rollupdb.com will explain the product, show installation and a measured example,
 
 Resume
 
-Current state: Session 1 adds the Go storage foundation, stream-definition persistence, snapshot export, correctness contracts and CI. No observation ingestion, release or website has been created. See RESUME.md for the current checkpoint.
-Next action on an implementation command: inspect the current repository and any AGENTS.md instructions, read RESUME.md, then begin Session 2.
+Current state: Session 2 adds exact mergeable state, dimension groups, atomic batched ingestion, persistent grace watermarks/counters, single-tier queries, explicit revision-1 migration and an aggregate snapshot/copy/reopen example. Percentile sketches, automatic retention, a release and the website remain future work. See RESUME.md for the current checkpoint.
+Next action on an implementation command: inspect the current repository and any AGENTS.md instructions, read RESUME.md, then begin Session 3.

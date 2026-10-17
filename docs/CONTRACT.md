@@ -1,6 +1,6 @@
 # Correctness contract
 
-This is the implementation target. Session 1 implements only initial-definition validation and persistence; rules for observations, statistics, rollups and queries below are specifications for subsequent sessions.
+This is the implementation contract. Session 2 implements initial-definition persistence, exact-statistical state, dimension groups, batched ingestion, grace enforcement, single-tier queries and coverage metadata. Sketches, definition changes, multi-tier promotion and expiry remain targets for subsequent sessions.
 
 ## Time and stream definitions
 
@@ -10,7 +10,7 @@ A definition has a stream name, immutable version, effective timestamp, ordered 
 
 Currently only creation of version 1 is available. Subsequent changes create new immutable versions rather than editing old definitions. New dimensions cannot be inferred historically. New statistics apply from their coverage date unless demonstrably derivable from retained state. Definition transitions must align to the coarsest tier boundary to avoid cross-version bucket ambiguity. Future ingestion before the first effective timestamp or against a mismatched definition is rejected.
 
-The dimensions are one joint grouping, not independent marginals. Preserve exact dimension keys with bounded string sizes and a deterministic collision-free encoding; Session 2 will select and document that encoding. Queries may combine retained groups and filter declared dimensions. They cannot filter or group by information never retained. Reject new groups once the limit is reached; never collapse them into unrelated groups. Retain dimension keys while referenced by live buckets and reclaim keys only when their last bucket expires. Infinite final retention can make historical keys persist forever, so a configured group cap remains necessary.
+The dimensions are one joint grouping, not independent marginals. Keys are JSON arrays of values in declared dimension order, with UTF-8 values limited to 1024 bytes and the encoded tuple limited to 4096 bytes. Queries may combine retained groups and filter declared dimensions. They cannot filter or group by information never retained. Reject new groups once the limit is reached; never collapse them into unrelated groups. Retain dimension keys while referenced by live buckets and reclaim keys only when their last bucket expires. Expiry is not implemented yet, so Session 2 never reclaims dimension keys. Infinite final retention can make historical keys persist forever, so a configured group cap remains necessary.
 
 ## Retention and grace
 
@@ -32,7 +32,7 @@ This ownership rule avoids a partially built parent overlapping fine siblings fo
 
 ## Statistical state
 
-Persist a checked integer count, floating-point sum, min, max, running mean and M2 (sum of squared deviations from the mean). Use Welford updates and Chan-style merges. Average is weighted by counts, never by averaging bucket averages. Population variance is M2/n; sample variance is M2/(n-1) and unavailable for fewer than two observations. Reject nonfinite inputs and overflow rather than persisting invalid state. Numerical tolerances, cancellation behavior and an accepted floating-point reference method must be specified and tested in Session 2. Mathematical exactness of floating-point sums is not promised.
+Persist a checked integer count, compensated floating-point sum, min, max, running mean and M2 (sum of squared deviations from the mean). Use Neumaier sum compensation, Welford updates and Chan-style merges. Public average is compensated sum divided by count, never an unweighted average of bucket averages. Population variance is M2/n; sample variance is M2/(n-1) and unavailable for fewer than two observations. Reject nonfinite inputs and overflowing intermediate state rather than persisting invalid numbers. The independent test reference uses exact rational arithmetic on the input float64 values. See docs/API.md for tested tolerances and cancellation limits; mathematical exactness of floating-point results is not promised.
 
 An empty covered interval may have count zero and sum zero; min, max, average and variance are null. This differs from an interval outside collection coverage, expired history or a statistic unavailable under the historical definition. Those cases need availability metadata and cannot be encoded as all-zero observations. Statistics not selected for public retention are not exposed merely because internal state could derive them.
 
@@ -46,6 +46,6 @@ Test a query crossing the seconds-to-minutes frontier, a range beginning halfway
 
 ## Batches, retries and durability
 
-Session 2 will implement batches with atomic persistence of accepted observations and rejection counters. Reject structurally invalid request envelopes without writes. Within a valid envelope, invalid observations, too-late observations and group-limit rejections receive distinct outcomes; valid observations are committed together. A storage failure rolls back all state and counter changes and must not return a successful acceptance acknowledgment. Define integer overflow and group admission order deterministically. Resubmission counts as new input; no automatic event deduplication is promised. A client retry after an ambiguous network failure can duplicate observations.
+Session 2 implements batches with atomic persistence of accepted observations and rejection counters. Reject structurally invalid request envelopes without writes. Within a valid envelope, invalid observations, too-late observations and group-limit rejections receive distinct outcomes; valid observations are committed together. Transaction failure rolls back state and counter changes and must not return a successful acceptance acknowledgment. Integer overflow is checked and group admission follows input order. A commit-level I/O failure can be indeterminate to the caller. Resubmission counts as new input; no automatic event deduplication is promised, so a retry after an ambiguous failure can duplicate observations.
 
 A durable acceptance acknowledgment follows commit. Snapshot success follows completed export and explicit file sync. Ordinary failed exports are removed; process termination can leave partial output at the destination. Never tell a user that an arbitrary copy of a running main database file is a safe backup. One owner process and supported local filesystems are the initial operational contract; power-loss recovery and promotion fault injection are acceptance work, not claims already validated by the Session 1 unit tests.

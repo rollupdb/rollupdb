@@ -1,4 +1,5 @@
 // Package rollupdb provides the storage foundation for a single-file aggregate
-// database. This prototype currently persists stream definitions and exports
-// consistent snapshots. Observation ingestion and rollups are not implemented yet.
+// database. It persists exact aggregate state, enforces ingestion grace windows,
+// queries a single tier, and exports consistent snapshots. Percentile sketches
+// and automatic multi-tier rollups are not implemented yet.
 package rollupdb

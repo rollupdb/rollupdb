@@ -20,7 +20,7 @@ type Tier struct {
 }
 
 // Definition is immutable once persisted. Only creation of version 1 is exposed
-// in Session 1; definition changes and observation ingestion are future work.
+// in this prototype; definition changes are future work.
 type Definition struct {
 	Name        string    `json:"name"`
 	Version     int       `json:"version"`
@@ -103,8 +103,7 @@ func (d Definition) Validate() error {
 	return nil
 }
 
-// CreateStream persists a validated initial definition atomically. Definitions
-// declare intended statistics; this method does not implement their ingestion.
+// CreateStream persists a validated initial definition atomically.
 func (db *DB) CreateStream(ctx context.Context, d Definition) error {
 	if err := d.Validate(); err != nil {
 		return fmt.Errorf("stream definition: %w", err)
@@ -134,6 +133,9 @@ func (db *DB) CreateStream(ctx context.Context, d Definition) error {
 	if _, err = tx.ExecContext(ctx, "INSERT INTO stream_definitions(name,version,effective_at,definition_json) VALUES(?,?,?,?)", d.Name, d.Version, d.EffectiveAt.Format(time.RFC3339Nano), string(encoded)); err != nil {
 		return err
 	}
+	if _, err = tx.ExecContext(ctx, "INSERT INTO stream_runtime(stream,version) VALUES(?,?)", d.Name, d.Version); err != nil {
+		return err
+	}
 	return tx.Commit()
 }
 
@@ -144,8 +146,16 @@ func (db *DB) Stream(ctx context.Context, name string) (Definition, error) {
 	if db.closed {
 		return Definition{}, ErrClosed
 	}
+	return readDefinition(ctx, db.sql, name)
+}
+
+type rowReader interface {
+	QueryRowContext(context.Context, string, ...any) *sql.Row
+}
+
+func readDefinition(ctx context.Context, reader rowReader, name string) (Definition, error) {
 	var encoded string
-	if err := db.sql.QueryRowContext(ctx, "SELECT definition_json FROM stream_definitions WHERE name=? AND version=1", name).Scan(&encoded); err != nil {
+	if err := reader.QueryRowContext(ctx, "SELECT definition_json FROM stream_definitions WHERE name=? AND version=1", name).Scan(&encoded); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return Definition{}, ErrStreamNotFound
 		}

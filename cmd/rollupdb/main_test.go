@@ -3,10 +3,14 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/rollupdb/rollupdb"
 )
 
 func TestCLIFileLifecycle(t *testing.T) {
@@ -22,6 +26,68 @@ func TestCLIFileLifecycle(t *testing.T) {
 	}
 	if !bytes.Contains(out.Bytes(), []byte(`"streams":1`)) {
 		t.Fatalf("bad inspect: %s", out.String())
+	}
+}
+
+func TestCLIExactIngestionQueriesAndStrictJSON(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "live.rollupdb")
+	var out bytes.Buffer
+	if err := run(ctx, []string{"init", path}, &out); err != nil {
+		t.Fatal(err)
+	}
+	d := rollupdb.Definition{Name: "api", Version: 1, EffectiveAt: time.Unix(0, 0).UTC(), Statistics: []string{"count", "sum", "avg"}, MaxGroups: 1, Tiers: []rollupdb.Tier{{WidthSeconds: 1, RetainSeconds: 0, GraceSeconds: 3600}}}
+	write := func(name string, value any) string {
+		t.Helper()
+		p := filepath.Join(dir, name)
+		body, err := json.Marshal(value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = os.WriteFile(p, body, 0600); err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	dfile := write("definition.json", d)
+	if err := run(ctx, []string{"create-stream", path, dfile}, &out); err != nil {
+		t.Fatal(err)
+	}
+	at := time.Now().UTC().Truncate(time.Second).Add(-time.Second)
+	batch := rollupdb.Batch{Stream: d.Name, Version: 1, Observations: []rollupdb.Observation{{Time: at, Value: 0}, {Time: at, Value: 2}, {Time: at, Value: 4}}}
+	bfile := write("batch.json", batch)
+	out.Reset()
+	if err := run(ctx, []string{"ingest", path, bfile}, &out); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(out.Bytes(), []byte(`"accepted":3`)) {
+		t.Fatalf("ingest: %s", out.String())
+	}
+	qfile := write("query.json", rollupdb.Query{Stream: d.Name, Version: 1, From: at, To: at.Add(time.Second)})
+	out.Reset()
+	if err := run(ctx, []string{"query", path, qfile}, &out); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(out.Bytes(), []byte(`"avg":2`)) || !bytes.Contains(out.Bytes(), []byte(`"count":3`)) {
+		t.Fatalf("query: %s", out.String())
+	}
+	for _, observation := range []string{`{"time":"` + at.Format(time.RFC3339) + `"}`, `{"time":"` + at.Format(time.RFC3339) + `","value":null}`, `{"time":"` + at.Format(time.RFC3339) + `","value":1,"unknown":2}`} {
+		body := `{"stream":"api","version":1,"observations":[` + observation + `]}`
+		invalid := filepath.Join(dir, "invalid.json")
+		if err := os.WriteFile(invalid, []byte(body), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if err := run(ctx, []string{"ingest", path, invalid}, &out); err == nil {
+			t.Fatalf("accepted malformed observation %s", body)
+		}
+	}
+	out.Reset()
+	if err := run(ctx, []string{"stats", path, d.Name}, &out); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(out.Bytes(), []byte(`"accepted":3`)) || !bytes.Contains(out.Bytes(), []byte(`"rejected_invalid":0`)) {
+		t.Fatalf("invalid envelopes changed counters: %s", out.String())
 	}
 }
 

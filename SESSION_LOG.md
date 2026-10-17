@@ -8,4 +8,14 @@ Local validation: pure-Go Linux unit and integration tests passed; race detectio
 
 The snapshot test held an uncommitted write on a second SQLite connection while exporting committed state, then copied only the snapshot main file to another directory and reopened it. Additional tests check malformed policy definitions, unknown formats, canceled exports, path escaping, concurrency and overwrite protection. CI is configured for native Linux, macOS and Windows tests, with a Linux race check. No release or website deployment was performed.
 
-Next session: implement durable exact-statistical state, canonical dimension groups, atomic batched ingestion and single-tier queries, with an explicit schema migration from the foundation format.
+Next session at that checkpoint: implement durable exact-statistical state, canonical dimension groups, atomic batched ingestion and single-tier queries, with an explicit schema migration from the foundation format.
+
+## Session 2 — October 17, 2026
+
+Implemented checked count, compensated sum, extrema, weighted average and mergeable variance state; canonical dimension tuples; deterministic group admission; durable batched ingestion; per-observation outcomes and lifetime counters; a persisted nondecreasing time watermark; exact grace-window rejection; and aligned single-tier aggregate queries with explicit collection coverage. Added strict bounded JSON CLI ingestion/query/status commands and explicit transactional migration from format revision 1 to 2. Definitions remain immutable version 1 and retention declarations are not yet executed.
+
+Validation covers an independent rational-arithmetic reference, unequal bucket weights, cancellation, large-offset variance, per-bucket and lifetime-counter overflow, out-of-order events, half-open minute boundaries, exact grace cutoffs, backward-clock restart, canonical tuple collisions/limits, concurrent ingestion, missing versus empty versus active coverage, unavailable fields, explicit migration/rollback and full state/counter/watermark rollback under an injected SQL failure. Snapshot/copy/reopen retains aggregate results exactly as represented by the engine.
+
+The deterministic replay example ingests four values across unequal groups/buckets and verifies count=4, sum=70, avg=17.5, population variance approximately 18.75 and sample variance approximately 25 before and after copying a standalone snapshot. Its initial revision-2 snapshot was 45,056 bytes. No compression or ingestion-throughput claim is made. Local pure-Go tests, race detection and vet pass; final platform and hosted CI verification is recorded after the checkpoint run completes.
+
+Next session: integrate one mergeable percentile sketch with explicit serialized type/version/parameters and accuracy tests. Automatic rollups and mixed-resolution queries remain Session 4 work.

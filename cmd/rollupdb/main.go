@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"unicode/utf8"
 
 	"github.com/rollupdb/rollupdb"
 )
@@ -20,24 +21,28 @@ func main() {
 }
 
 func run(ctx context.Context, args []string, out io.Writer) (err error) {
+	const usage = "Usage: rollupdb init FILE | migrate FILE | inspect FILE | snapshot FILE DEST | create-stream FILE DEFINITION.json | stream FILE NAME | stats FILE NAME | ingest FILE BATCH.json | query FILE QUERY.json"
 	if len(args) == 1 && (args[0] == "help" || args[0] == "--help" || args[0] == "-h") {
-		_, err := fmt.Fprintln(out, "RollupDB prototype\nUsage: rollupdb init FILE | inspect FILE | snapshot FILE DEST | create-stream FILE DEFINITION.json | stream FILE NAME\nIngestion and rollups are not yet implemented.")
+		_, err := fmt.Fprintln(out, "RollupDB prototype\n"+usage+"\nExact ingestion and single-tier queries are available. Sketches and automatic rollups are not yet implemented.")
 		return err
 	}
 	if len(args) < 2 {
-		return errors.New("usage: rollupdb init FILE | inspect FILE | snapshot FILE DEST | create-stream FILE DEFINITION.json | stream FILE NAME")
+		return errors.New(usage)
 	}
 	op, path := args[0], args[1]
 	want := 2
 	switch op {
-	case "init", "inspect":
-	case "snapshot", "create-stream", "stream":
+	case "init", "inspect", "migrate":
+	case "snapshot", "create-stream", "stream", "ingest", "query", "stats":
 		want = 3
 	default:
 		return fmt.Errorf("unknown command %q", op)
 	}
 	if len(args) != want {
 		return fmt.Errorf("%s expects %d arguments", op, want-1)
+	}
+	if op == "migrate" {
+		return rollupdb.Migrate(ctx, path)
 	}
 	var db *rollupdb.DB
 	if op == "init" {
@@ -51,29 +56,37 @@ func run(ctx context.Context, args []string, out io.Writer) (err error) {
 	defer func() { err = errors.Join(err, db.Close()) }()
 	switch op {
 	case "create-stream":
-		f, err := os.Open(args[2])
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-		encoded, err := io.ReadAll(io.LimitReader(f, (1<<20)+1))
-		if err != nil {
-			return err
-		}
-		if len(encoded) > 1<<20 {
-			return errors.New("stream definition exceeds 1 MiB")
-		}
-		decoder := json.NewDecoder(bytes.NewReader(encoded))
-		decoder.DisallowUnknownFields()
 		var d rollupdb.Definition
-		if err = decoder.Decode(&d); err != nil {
+		if err = decodeFile(args[2], &d, 1<<20); err != nil {
 			return err
-		}
-		var extra any
-		if err = decoder.Decode(&extra); !errors.Is(err, io.EOF) {
-			return errors.New("expected exactly one stream definition")
 		}
 		return db.CreateStream(ctx, d)
+	case "ingest":
+		var batch rollupdb.Batch
+		if err = decodeFile(args[2], &batch, 64<<20); err != nil {
+			return err
+		}
+		result, err := db.Ingest(ctx, batch)
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(out).Encode(result)
+	case "query":
+		var query rollupdb.Query
+		if err = decodeFile(args[2], &query, 1<<20); err != nil {
+			return err
+		}
+		result, err := db.Query(ctx, query)
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(out).Encode(result)
+	case "stats":
+		result, err := db.Status(ctx, args[2])
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(out).Encode(result)
 	case "stream":
 		d, err := db.Stream(ctx, args[2])
 		if err != nil {
@@ -89,4 +102,32 @@ func run(ctx context.Context, args []string, out io.Writer) (err error) {
 		}
 		return json.NewEncoder(out).Encode(i)
 	}
+}
+
+func decodeFile(path string, target any, limit int64) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	encoded, err := io.ReadAll(io.LimitReader(f, limit+1))
+	if err != nil {
+		return err
+	}
+	if int64(len(encoded)) > limit {
+		return fmt.Errorf("JSON file exceeds %d bytes", limit)
+	}
+	if !utf8.Valid(encoded) {
+		return errors.New("JSON file must be valid UTF-8")
+	}
+	decoder := json.NewDecoder(bytes.NewReader(encoded))
+	decoder.DisallowUnknownFields()
+	if err = decoder.Decode(target); err != nil {
+		return err
+	}
+	var extra any
+	if err = decoder.Decode(&extra); !errors.Is(err, io.EOF) {
+		return errors.New("expected exactly one JSON object")
+	}
+	return nil
 }

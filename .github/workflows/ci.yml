@@ -29,6 +29,10 @@ jobs:
         run: go test ./...
       - name: Vet
         run: go vet ./...
+      - name: Replay and snapshot example
+        env:
+          CGO_ENABLED: '0'
+        run: go run ./examples/replay
       - name: Build without CGo
         env:
           CGO_ENABLED: '0'
