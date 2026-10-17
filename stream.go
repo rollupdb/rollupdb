@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"time"
 )
 
@@ -39,8 +40,8 @@ func (d Definition) Validate() error {
 	if !identifier.MatchString(d.Name) {
 		return errors.New("invalid stream name: use up to 64 ASCII letters, digits and underscores, starting with a letter or underscore")
 	}
-	if d.Version != 1 {
-		return errors.New("only new stream version 1 is supported")
+	if d.Version < 1 {
+		return errors.New("version must be 1 or more")
 	}
 	if d.Sketch != nil {
 		if err := d.Sketch.Validate(); err != nil {
@@ -113,6 +114,9 @@ func (db *DB) CreateStream(ctx context.Context, d Definition) error {
 	if err := d.Validate(); err != nil {
 		return fmt.Errorf("stream definition: %w", err)
 	}
+	if d.Version != 1 {
+		return errors.New("stream definition: a new stream starts at version 1; use UpdateStream for later versions")
+	}
 	d.EffectiveAt = d.EffectiveAt.UTC()
 	encoded, err := json.Marshal(d)
 	if err != nil {
@@ -144,7 +148,7 @@ func (db *DB) CreateStream(ctx context.Context, d Definition) error {
 	return tx.Commit()
 }
 
-// Stream returns the initial definition for a named stream.
+// Stream returns the current (latest) definition of a named stream.
 func (db *DB) Stream(ctx context.Context, name string) (Definition, error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -160,7 +164,7 @@ type rowReader interface {
 
 func readDefinition(ctx context.Context, reader rowReader, name string) (Definition, error) {
 	var encoded string
-	if err := reader.QueryRowContext(ctx, "SELECT definition_json FROM stream_definitions WHERE name=? AND version=1", name).Scan(&encoded); err != nil {
+	if err := reader.QueryRowContext(ctx, "SELECT definition_json FROM stream_definitions WHERE name=? ORDER BY version DESC LIMIT 1", name).Scan(&encoded); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return Definition{}, ErrStreamNotFound
 		}
@@ -174,4 +178,110 @@ func readDefinition(ctx context.Context, reader rowReader, name string) (Definit
 		return Definition{}, errors.New("rollupdb: corrupt definition identity")
 	}
 	return d, d.Validate()
+}
+
+// ErrDefinitionChange reports a new stream version that changes something a
+// version can't change. See UpdateStream.
+var ErrDefinitionChange = errors.New("rollupdb: unsupported definition change")
+
+// UpdateStream adds the next version of an existing stream. A new version may
+// change each tier's retain_seconds and grace_seconds, max_groups and the
+// statistics list, and it may add a sketch to a stream that has none. It keeps
+// the name, effective_at, dimensions, the number and widths of the tiers, and
+// any existing sketch settings, because the retained buckets were built with
+// them. The change applies at once to every bucket, old and new: shorter
+// retention takes effect at the next Advance, and history already expired
+// stays gone. Ingest and Query accept any existing version number and always
+// use the latest definition.
+func (db *DB) UpdateStream(ctx context.Context, d Definition) error {
+	if err := d.Validate(); err != nil {
+		return fmt.Errorf("stream definition: %w", err)
+	}
+	d.EffectiveAt = d.EffectiveAt.UTC()
+	encoded, err := json.Marshal(d)
+	if err != nil {
+		return err
+	}
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	if db.closed {
+		return ErrClosed
+	}
+	tx, err := db.sql.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	current, err := readDefinition(ctx, tx, d.Name)
+	if err != nil {
+		return err
+	}
+	if err = compatibleVersion(current, d); err != nil {
+		return err
+	}
+	if _, err = tx.ExecContext(ctx, "INSERT INTO stream_definitions(name,version,effective_at,definition_json) VALUES(?,?,?,?)", d.Name, d.Version, d.EffectiveAt.Format(time.RFC3339Nano), string(encoded)); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func compatibleVersion(current, next Definition) error {
+	change := func(format string, args ...any) error {
+		return fmt.Errorf("%w: %s", ErrDefinitionChange, fmt.Sprintf(format, args...))
+	}
+	switch {
+	case next.Version != current.Version+1:
+		return change("stream %q is at version %d, so the next version is %d", current.Name, current.Version, current.Version+1)
+	case !next.EffectiveAt.Equal(current.EffectiveAt):
+		return change("effective_at can't change")
+	case !slices.Equal(next.Dimensions, current.Dimensions):
+		return change("dimensions can't change; create a new stream instead")
+	case len(next.Tiers) != len(current.Tiers):
+		return change("the number of tiers can't change")
+	}
+	for i := range next.Tiers {
+		if next.Tiers[i].WidthSeconds != current.Tiers[i].WidthSeconds {
+			return change("tier %d's width can't change", i)
+		}
+	}
+	switch {
+	case current.Sketch != nil && next.Sketch == nil:
+		return change("a sketch can't be removed")
+	case current.Sketch != nil && *next.Sketch != *current.Sketch:
+		return change("sketch settings can't change; existing sketches wouldn't merge")
+	}
+	return nil
+}
+
+// StreamVersions returns every version of a stream's definition, oldest first.
+func (db *DB) StreamVersions(ctx context.Context, name string) ([]Definition, error) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	if db.closed {
+		return nil, ErrClosed
+	}
+	rows, err := db.sql.QueryContext(ctx, "SELECT definition_json FROM stream_definitions WHERE name=? ORDER BY version", name)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var versions []Definition
+	for rows.Next() {
+		var encoded string
+		if err = rows.Scan(&encoded); err != nil {
+			return nil, err
+		}
+		var d Definition
+		if err = json.Unmarshal([]byte(encoded), &d); err != nil {
+			return nil, err
+		}
+		versions = append(versions, d)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(versions) == 0 {
+		return nil, ErrStreamNotFound
+	}
+	return versions, nil
 }

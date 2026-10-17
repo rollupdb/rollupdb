@@ -225,6 +225,9 @@ func promoteParent(ctx context.Context, tx *sql.Tx, d Definition, tier int, pare
 		var state exactState
 		var sketch *quantileSketch
 		var count int64
+		// A source from before the stream's sketch was added has none, so the
+		// parent can't have a complete one either.
+		sketchMissing := false
 		for rows.Next() {
 			var b exactState
 			var encoded []byte
@@ -235,7 +238,9 @@ func promoteParent(ctx context.Context, tx *sql.Tx, d Definition, tier int, pare
 				err = errors.New("rollupdb: invalid persisted statistical state")
 				break
 			}
-			if d.Sketch != nil {
+			if d.Sketch != nil && encoded == nil {
+				sketchMissing = true
+			} else if d.Sketch != nil && !sketchMissing {
 				var next *quantileSketch
 				next, err = decodeQuantileSketch(encoded, *d.Sketch, b)
 				if err != nil {
@@ -267,7 +272,7 @@ func promoteParent(ctx context.Context, tx *sql.Tx, d Definition, tier int, pare
 			return err
 		}
 		var encoded []byte
-		if sketch != nil {
+		if sketch != nil && !sketchMissing {
 			encoded, err = sketch.encode()
 			if err != nil {
 				return err

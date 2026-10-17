@@ -131,8 +131,8 @@ type bucketKey struct {
 // Every outcome is ordered like its input. A non-nil error means no successful
 // acknowledgment; the returned result is zero. Retrying is new input, not deduped.
 func (db *DB) Ingest(ctx context.Context, batch Batch) (BatchResult, error) {
-	if !identifier.MatchString(batch.Stream) || batch.Version != 1 || len(batch.Observations) == 0 || len(batch.Observations) > MaxBatchSize {
-		return BatchResult{}, fmt.Errorf("%w: use version 1, a valid stream and 1..%d observations", ErrInvalidRequest, MaxBatchSize)
+	if !identifier.MatchString(batch.Stream) || batch.Version < 1 || len(batch.Observations) == 0 || len(batch.Observations) > MaxBatchSize {
+		return BatchResult{}, fmt.Errorf("%w: use a valid stream, a version of 1 or more and 1..%d observations", ErrInvalidRequest, MaxBatchSize)
 	}
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -151,6 +151,9 @@ func (db *DB) Ingest(ctx context.Context, batch Batch) (BatchResult, error) {
 	d, err := readDefinition(ctx, tx, batch.Stream)
 	if err != nil {
 		return BatchResult{}, err
+	}
+	if batch.Version > d.Version {
+		return BatchResult{}, fmt.Errorf("%w: stream %q is at version %d", ErrInvalidRequest, d.Name, d.Version)
 	}
 	if now.Before(d.EffectiveAt) {
 		return BatchResult{}, ErrStreamNotActive
@@ -243,9 +246,14 @@ func (db *DB) Ingest(ctx context.Context, batch Batch) (BatchResult, error) {
 			}
 			if d.Sketch != nil {
 				var sketch *quantileSketch
-				if state.N == 0 && encoded == nil {
+				switch {
+				case state.N == 0 && encoded == nil:
 					sketch, err = newQuantileSketch(*d.Sketch)
-				} else {
+				case encoded == nil:
+					// The bucket predates the stream's sketch. Its distribution
+					// is unknown, so it stays exact-only rather than holding a
+					// sketch of only the newer readings.
+				default:
 					sketch, err = decodeQuantileSketch(encoded, *d.Sketch, state)
 				}
 				if err != nil {
@@ -261,8 +269,8 @@ func (db *DB) Ingest(ctx context.Context, batch Batch) (BatchResult, error) {
 			rejectInvalid("numeric_overflow")
 			continue
 		}
-		if d.Sketch != nil {
-			sketches[bk].update(observation.Value)
+		if sketch := sketches[bk]; sketch != nil {
+			sketch.update(observation.Value)
 		}
 		if !group.exists {
 			group.exists = true
@@ -286,8 +294,8 @@ func (db *DB) Ingest(ctx context.Context, batch Batch) (BatchResult, error) {
 	for key := range dirty {
 		s := states[key]
 		var encoded []byte
-		if d.Sketch != nil {
-			encoded, err = sketches[key].encode()
+		if sketch := sketches[key]; d.Sketch != nil && sketch != nil {
+			encoded, err = sketch.encode()
 			if err != nil {
 				return BatchResult{}, err
 			}

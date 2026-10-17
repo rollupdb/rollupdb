@@ -49,7 +49,9 @@ There is no authentication or TLS. This is a trusted local-process interface, no
 | --- | --- | --- |
 | GET | /v1/info | Engine Info |
 | POST | /v1/streams | Definition; 201 on creation |
-| GET | /v1/streams/NAME | Immutable Definition |
+| GET | /v1/streams/NAME | Current definition |
+| GET | /v1/streams/NAME/versions | Every version, oldest first |
+| POST | /v1/streams/NAME/versions | The next version; 201 when added |
 | GET | /v1/streams/NAME/stats | Counters, groups, buckets, coverage and frontiers |
 | POST | /v1/ingest | One Batch; BatchResult after commit |
 | POST | /v1/query | Query; exact statistics, quantiles and coverage |

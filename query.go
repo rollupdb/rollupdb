@@ -89,7 +89,7 @@ type QueryResult struct {
 // dimension filters. It reports absent collection coverage separately from zero
 // observations. The current tier is never resampled or split proportionally.
 func (db *DB) Query(ctx context.Context, q Query) (QueryResult, error) {
-	if !identifier.MatchString(q.Stream) || q.Version != 1 || !supportedTime(q.From) || q.To.After(latestTime) || !q.From.Before(q.To) {
+	if !identifier.MatchString(q.Stream) || q.Version < 1 || !supportedTime(q.From) || q.To.After(latestTime) || !q.From.Before(q.To) {
 		return QueryResult{}, ErrInvalidRequest
 	}
 	if len(q.Quantiles) > 32 {
@@ -116,6 +116,9 @@ func (db *DB) Query(ctx context.Context, q Query) (QueryResult, error) {
 	if err != nil {
 		return QueryResult{}, err
 	}
+	if q.Version > d.Version {
+		return QueryResult{}, fmt.Errorf("%w: stream %q is at version %d", ErrInvalidRequest, d.Name, d.Version)
+	}
 	width := d.Tiers[0].WidthSeconds * int64(time.Second)
 	if q.From.UnixNano()%width != 0 || q.To.UnixNano()%width != 0 {
 		return QueryResult{}, ErrPartialBucket
@@ -138,7 +141,7 @@ func (db *DB) Query(ctx context.Context, q Query) (QueryResult, error) {
 	if err != nil {
 		return QueryResult{}, err
 	}
-	r := QueryResult{Requested: Interval{q.From.UTC(), q.To.UTC()}, Missing: []CoverageGap{}, ResolutionSeconds: 0, DefinitionVersion: 1, AvailableStatistics: append([]string(nil), d.Statistics...)}
+	r := QueryResult{Requested: Interval{q.From.UTC(), q.To.UTC()}, Missing: []CoverageGap{}, ResolutionSeconds: 0, DefinitionVersion: d.Version, AvailableStatistics: append([]string(nil), d.Statistics...)}
 	if d.Sketch != nil {
 		r.AvailableStatistics = append(r.AvailableStatistics, "quantiles")
 	}
@@ -216,6 +219,9 @@ func (db *DB) Query(ctx context.Context, q Query) (QueryResult, error) {
 	state := exactState{}
 	var sketch *quantileSketch
 	needSketch := len(q.Quantiles) > 0 && d.Sketch != nil
+	// A bucket from before the stream's sketch was added has none; percentiles
+	// over a range that includes one aren't available.
+	sketchMissing := false
 	for _, band := range r.Resolutions {
 		bandWidth := band.WidthSeconds * int64(time.Second)
 		rows, err := tx.QueryContext(ctx, `SELECT tuple_key,n,sum,sum_comp,min,max,mean,m2,sketch FROM buckets WHERE stream=? AND version=1 AND tier=? AND start_ns>=? AND start_ns<? ORDER BY start_ns,tuple_key`, d.Name, band.Tier, band.From.UnixNano()/bandWidth*bandWidth, band.To.UnixNano())
@@ -251,7 +257,9 @@ func (db *DB) Query(ctx context.Context, q Query) (QueryResult, error) {
 				err = errors.New("rollupdb: bucket outside recorded coverage")
 				break
 			}
-			if needSketch {
+			if needSketch && encoded == nil {
+				sketchMissing = true
+			} else if needSketch && !sketchMissing {
 				var next *quantileSketch
 				next, err = decodeQuantileSketch(encoded, *d.Sketch, b)
 				if err != nil {
@@ -283,7 +291,11 @@ func (db *DB) Query(ctx context.Context, q Query) (QueryResult, error) {
 		}
 	}
 	r.Statistics = state.statistics(d.Statistics, covered)
-	r.Quantiles, r.QuantileAccuracy, err = quantileAnswers(q.Quantiles, d.Sketch, sketch, state, covered)
+	if sketchMissing {
+		r.Quantiles, r.QuantileAccuracy, err = quantileAnswers(q.Quantiles, nil, nil, state, covered)
+	} else {
+		r.Quantiles, r.QuantileAccuracy, err = quantileAnswers(q.Quantiles, d.Sketch, sketch, state, covered)
+	}
 	if err != nil {
 		return QueryResult{}, err
 	}

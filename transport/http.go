@@ -55,6 +55,8 @@ func engineError(w http.ResponseWriter, err error) {
 		problem(w, 400, "invalid_request", "invalid engine request")
 	case errors.Is(err, rollupdb.ErrStreamNotActive):
 		problem(w, 409, "stream_not_active", "stream is not active at the host clock")
+	case errors.Is(err, rollupdb.ErrDefinitionChange):
+		problem(w, 409, "definition_change", strings.TrimPrefix(err.Error(), rollupdb.ErrDefinitionChange.Error()+": "))
 	case errors.Is(err, rollupdb.ErrClockJump):
 		problem(w, 409, "clock_jump", "host clock is too far ahead of the stream's stored watermark; nothing was written")
 	case errors.Is(err, rollupdb.ErrNumericOverflow):
@@ -132,6 +134,10 @@ func NewHandler(db *rollupdb.DB) http.Handler {
 			problem(w, 400, "invalid_definition", err.Error())
 			return
 		}
+		if d.Version != 1 {
+			problem(w, 400, "invalid_definition", "a new stream starts at version 1; POST later versions to /v1/streams/NAME/versions")
+			return
+		}
 		if err := db.CreateStream(r.Context(), d); err != nil {
 			engineError(w, err)
 			return
@@ -162,6 +168,36 @@ func NewHandler(db *rollupdb.DB) http.Handler {
 			return
 		}
 		jsonResponse(w, 200, results)
+	})
+	mux.HandleFunc("GET /v1/streams/{name}/versions", func(w http.ResponseWriter, r *http.Request) {
+		versions, err := db.StreamVersions(r.Context(), r.PathValue("name"))
+		if err != nil {
+			engineError(w, err)
+			return
+		}
+		jsonResponse(w, 200, versions)
+	})
+	mux.HandleFunc("POST /v1/streams/{name}/versions", func(w http.ResponseWriter, r *http.Request) {
+		var d rollupdb.Definition
+		if !decodeRequest(w, r, &d, MaxJSONBody) {
+			return
+		}
+		if d.Name != r.PathValue("name") {
+			problem(w, 400, "invalid_definition", "the definition's name must match the path")
+			return
+		}
+		if err := d.Validate(); err != nil {
+			problem(w, 400, "invalid_definition", err.Error())
+			return
+		}
+		if err := db.UpdateStream(r.Context(), d); err != nil {
+			engineError(w, err)
+			return
+		}
+		jsonResponse(w, 201, struct {
+			Name    string `json:"name"`
+			Version int    `json:"version"`
+		}{d.Name, d.Version})
 	})
 	mux.HandleFunc("GET /v1/streams/{name}", func(w http.ResponseWriter, r *http.Request) {
 		value, err := db.Stream(r.Context(), r.PathValue("name"))

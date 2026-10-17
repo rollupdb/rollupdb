@@ -1,6 +1,6 @@
 # API and numerical behavior
 
-The embedded API is the engine. The CLI reads bounded UTF-8 JSON files or streaming NDJSON, and the loopback HTTP service calls the same methods. See docs/INTERFACES.md for transport limits, per-batch partial progress and HTTP routes. Stream definitions remain immutable version 1, with an optional sketch configuration for new streams. Adding a new definition version is future work. See docs/SKETCHES.md for the quantile contract and encoding.
+The embedded API is the engine. The CLI reads bounded UTF-8 JSON files or streaming NDJSON, and the loopback HTTP service calls the same methods. See docs/INTERFACES.md for transport limits, per-batch partial progress and HTTP routes. Streams start at version 1 and can gain later versions that change retention, grace, the group cap and statistics, or add a sketch; see docs/CONTRACT.md. See docs/SKETCHES.md for the quantile contract and encoding.
 
 ## Ingestion
 
