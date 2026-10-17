@@ -32,19 +32,22 @@ the whole procedure and the checks to run afterwards.
   injected clock; CLI and server read `ROLLUPDB_MAX_CLOCK_STEP`), and
   GET /v1/snapshot gets a 30-minute budget instead of the 30 s / 60 s limits.
 
-## Next, agreed
+## Done
 
-1. Test results live in `test/results`, written by
-   `scripts/record-tests.sh`. Refresh them by starting the `record` workflow
-   (`gh api -X POST repos/rollupdb/rollupdb/actions/workflows/record.yml/dispatches -f ref=main`);
-   it commits the files to main. Every number on the site comes from there.
-2. Build the site at photozeitgeist/rollupdb.com (the owner creates the repo
-   and grants access) with the standard Hugo Launch template, unchanged:
-   about, contact (info@rollupdb.com), quick start, download and reference
-   pages; posts for the launch, a plain-language explainer, how it was
-   tested and the name.
+- Test results are recorded in `test/results` by `scripts/record-tests.sh`.
+  Refresh them by starting the `record` workflow
+  (`gh api -X POST repos/rollupdb/rollupdb/actions/workflows/record.yml/dispatches -f ref=main`);
+  it commits the files to main. Every number on the site comes from there,
+  so rerun it after changes that affect them and update the site to match.
+- The site is built at photozeitgeist/rollupdb.com on the standard Launch
+  template, unchanged (content and config only): about, contact, quick
+  start, download and reference pages; posts for the launch, the explainer,
+  how it was tested and the name; four diagrams drawn into static/images.
+  The quick start was run against the released 0.1.1 binary.
 
-Not decided yet, ask the owner first: any feature work after 0.1.
+## Next
+
+Nothing agreed yet. Ask the owner before any feature work after 0.1.
 
 ## Working here
 
