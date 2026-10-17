@@ -22,7 +22,7 @@ SQLite remains modernc.org/sqlite v1.60.1/libc v1.77.1, one serialized connectio
 
 ## Verification and measurements
 
-Local pure-Go tests, Linux race checks and vet pass. The bounded decoder completed a ten-second fuzz run. Final cross-build and hosted native CI results, with exact tested SHA/run, are recorded in SESSION_LOG.md after verification.
+Local pure-Go tests, Linux race checks, vet, module verification, formatting and Windows/macOS cross-builds pass. The bounded decoder completed a ten-second fuzz run without failure. Native Linux, macOS and Windows CI passed at code commit da36ac5ac0cf9cf6b5b420c26d76cb6385e2a47f: https://github.com/rollupdb/rollupdb/actions/runs/39039436672 . Each platform passed tests, vet, builds and both replay/accuracy examples; Linux also passed race detection, formatting and tidy-manifest checks. The final verification-record commit changes documentation only and skips redundant CI.
 
 Session 3 tests codec round trips at K=64/200/4096, exact and estimated queries, direct/unequal partition accuracy, constants, duplicates, heavy tails, strict rank validation, filtered multi-bucket merges, decoded updates, checksum/version/type/parameter/layout corruption, refusal without mutation, explicit revision-1/2 migration and old-data non-backfill. Existing exact/rational, late-event, concurrency and rollback tests remain.
 
