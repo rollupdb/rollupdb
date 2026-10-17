@@ -20,8 +20,8 @@ type Tier struct {
 	GraceSeconds  int64 `json:"grace_seconds"`
 }
 
-// Definition is immutable once persisted. Only creation of version 1 is exposed
-// in this prototype; definition changes are future work.
+// Definition describes a stream. Each version is immutable once persisted;
+// UpdateStream adds the next one.
 type Definition struct {
 	Name        string        `json:"name"`
 	Version     int           `json:"version"`
@@ -31,6 +31,16 @@ type Definition struct {
 	MaxGroups   int           `json:"max_groups"`
 	Tiers       []Tier        `json:"tiers"`
 	Sketch      *SketchConfig `json:"sketch,omitempty"`
+	// SketchSince is set by UpdateStream when a version adds a sketch to a
+	// stream that had none: buckets that started before it may lack one.
+	// RollupDB sets it; a value supplied by the caller is ignored.
+	SketchSince *time.Time `json:"sketch_since,omitempty"`
+}
+
+// sketchOptional reports whether a bucket starting at startNS may lawfully
+// have no sketch although the stream has one now.
+func (d Definition) sketchOptional(startNS int64) bool {
+	return d.SketchSince != nil && startNS < d.SketchSince.UnixNano()
 }
 
 var identifier = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]{0,63}$`)
@@ -117,6 +127,7 @@ func (db *DB) CreateStream(ctx context.Context, d Definition) error {
 	if d.Version != 1 {
 		return errors.New("stream definition: a new stream starts at version 1; use UpdateStream for later versions")
 	}
+	d.SketchSince = nil
 	d.EffectiveAt = d.EffectiveAt.UTC()
 	encoded, err := json.Marshal(d)
 	if err != nil {
@@ -198,10 +209,6 @@ func (db *DB) UpdateStream(ctx context.Context, d Definition) error {
 		return fmt.Errorf("stream definition: %w", err)
 	}
 	d.EffectiveAt = d.EffectiveAt.UTC()
-	encoded, err := json.Marshal(d)
-	if err != nil {
-		return err
-	}
 	db.mu.Lock()
 	defer db.mu.Unlock()
 	if db.closed {
@@ -217,6 +224,15 @@ func (db *DB) UpdateStream(ctx context.Context, d Definition) error {
 		return err
 	}
 	if err = compatibleVersion(current, d); err != nil {
+		return err
+	}
+	d.SketchSince = current.SketchSince
+	if current.Sketch == nil && d.Sketch != nil {
+		since := db.now().UTC()
+		d.SketchSince = &since
+	}
+	encoded, err := json.Marshal(d)
+	if err != nil {
 		return err
 	}
 	if _, err = tx.ExecContext(ctx, "INSERT INTO stream_definitions(name,version,effective_at,definition_json) VALUES(?,?,?,?)", d.Name, d.Version, d.EffectiveAt.Format(time.RFC3339Nano), string(encoded)); err != nil {

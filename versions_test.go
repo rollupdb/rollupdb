@@ -17,7 +17,7 @@ func TestUpdateStreamChangesSettingsAndKeepsHistory(t *testing.T) {
 	next.Version = 2
 	next.Statistics = []string{"count", "sum", "min", "max", "avg"}
 	next.MaxGroups = 5
-	next.Tiers = []Tier{{1, 180, 120}, {60, 0, 60}}
+	next.Tiers = []Tier{{1, 180, 120}, {60, 0, 180}}
 	if err := db.UpdateStream(ctx, next); err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestUpdateStreamRefusesStructuralChanges(t *testing.T) {
 		"skipped version":  next(func(n *Definition) { n.Version = 3 }),
 		"same version":     next(func(n *Definition) { n.Version = 1 }),
 		"dimensions":       next(func(n *Definition) { n.Dimensions = []string{"region"} }),
-		"tier width":       next(func(n *Definition) { n.Tiers[1].WidthSeconds = 120 }),
+		"tier width":       next(func(n *Definition) { n.Tiers[1].WidthSeconds = 3600 }),
 		"tier count":       next(func(n *Definition) { n.Tiers = n.Tiers[:1] }),
 		"effective time":   next(func(n *Definition) { n.EffectiveAt = n.EffectiveAt.Add(-time.Hour) }),
 		"sketch removed":   next(func(n *Definition) { n.Sketch = nil }),

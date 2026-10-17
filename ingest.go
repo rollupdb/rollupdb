@@ -249,10 +249,12 @@ func (db *DB) Ingest(ctx context.Context, batch Batch) (BatchResult, error) {
 				switch {
 				case state.N == 0 && encoded == nil:
 					sketch, err = newQuantileSketch(*d.Sketch)
-				case encoded == nil:
+				case encoded == nil && d.sketchOptional(start):
 					// The bucket predates the stream's sketch. Its distribution
 					// is unknown, so it stays exact-only rather than holding a
 					// sketch of only the newer readings.
+				case encoded == nil:
+					err = fmt.Errorf("%w: bucket has no sketch", ErrSketchEncoding)
 				default:
 					sketch, err = decodeQuantileSketch(encoded, *d.Sketch, state)
 				}

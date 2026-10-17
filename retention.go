@@ -238,7 +238,7 @@ func promoteParent(ctx context.Context, tx *sql.Tx, d Definition, tier int, pare
 				err = errors.New("rollupdb: invalid persisted statistical state")
 				break
 			}
-			if d.Sketch != nil && encoded == nil {
+			if d.Sketch != nil && encoded == nil && d.sketchOptional(parent) {
 				sketchMissing = true
 			} else if d.Sketch != nil && !sketchMissing {
 				var next *quantileSketch

@@ -14,7 +14,7 @@ func TestDefinitionValidation(t *testing.T) {
 	}
 	changes := map[string]func(*Definition){
 		"identifier":                   func(d *Definition) { d.Name = "bad name" },
-		"version":                      func(d *Definition) { d.Version = 2 },
+		"version":                      func(d *Definition) { d.Version = 0 },
 		"group_limit":                  func(d *Definition) { d.MaxGroups = 0 },
 		"duplicate_dimension":          func(d *Definition) { d.Dimensions = []string{"service", "service"} },
 		"dimension_name":               func(d *Definition) { d.Dimensions = []string{""} },

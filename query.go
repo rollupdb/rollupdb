@@ -224,15 +224,16 @@ func (db *DB) Query(ctx context.Context, q Query) (QueryResult, error) {
 	sketchMissing := false
 	for _, band := range r.Resolutions {
 		bandWidth := band.WidthSeconds * int64(time.Second)
-		rows, err := tx.QueryContext(ctx, `SELECT tuple_key,n,sum,sum_comp,min,max,mean,m2,sketch FROM buckets WHERE stream=? AND version=1 AND tier=? AND start_ns>=? AND start_ns<? ORDER BY start_ns,tuple_key`, d.Name, band.Tier, band.From.UnixNano()/bandWidth*bandWidth, band.To.UnixNano())
+		rows, err := tx.QueryContext(ctx, `SELECT tuple_key,start_ns,n,sum,sum_comp,min,max,mean,m2,sketch FROM buckets WHERE stream=? AND version=1 AND tier=? AND start_ns>=? AND start_ns<? ORDER BY start_ns,tuple_key`, d.Name, band.Tier, band.From.UnixNano()/bandWidth*bandWidth, band.To.UnixNano())
 		if err != nil {
 			return QueryResult{}, err
 		}
 		for rows.Next() {
 			var key string
+			var startNS int64
 			var b exactState
 			var encoded []byte
-			if err = rows.Scan(&key, &b.N, &b.Sum, &b.SumComp, &b.Min, &b.Max, &b.Mean, &b.M2, &encoded); err != nil {
+			if err = rows.Scan(&key, &startNS, &b.N, &b.Sum, &b.SumComp, &b.Min, &b.Max, &b.Mean, &b.M2, &encoded); err != nil {
 				break
 			}
 			var values []string
@@ -257,7 +258,7 @@ func (db *DB) Query(ctx context.Context, q Query) (QueryResult, error) {
 				err = errors.New("rollupdb: bucket outside recorded coverage")
 				break
 			}
-			if needSketch && encoded == nil {
+			if needSketch && encoded == nil && d.sketchOptional(startNS) {
 				sketchMissing = true
 			} else if needSketch && !sketchMissing {
 				var next *quantileSketch
