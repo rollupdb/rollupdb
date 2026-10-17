@@ -34,8 +34,10 @@ the whole procedure and the checks to run afterwards.
 
 ## Next, agreed
 
-1. Record test results into `test/results` with a script, and take every
-   number used on the site from there.
+1. Test results live in `test/results`, written by
+   `scripts/record-tests.sh`. Refresh them by starting the `record` workflow
+   (`gh api -X POST repos/rollupdb/rollupdb/actions/workflows/record.yml/dispatches -f ref=main`);
+   it commits the files to main. Every number on the site comes from there.
 2. Build the site at photozeitgeist/rollupdb.com (the owner creates the repo
    and grants access) with the standard Hugo Launch template, unchanged:
    about, contact (info@rollupdb.com), quick start, download and reference
