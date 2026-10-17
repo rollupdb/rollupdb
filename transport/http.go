@@ -141,6 +141,28 @@ func NewHandler(db *rollupdb.DB) http.Handler {
 			Version int    `json:"version"`
 		}{d.Name, d.Version})
 	})
+	mux.HandleFunc("GET /v1/streams", func(w http.ResponseWriter, r *http.Request) {
+		names, err := db.Streams(r.Context())
+		if err != nil {
+			engineError(w, err)
+			return
+		}
+		jsonResponse(w, 200, struct {
+			Streams []string `json:"streams"`
+		}{append([]string{}, names...)})
+	})
+	mux.HandleFunc("POST /v1/advance", func(w http.ResponseWriter, r *http.Request) {
+		var empty struct{}
+		if !decodeRequest(w, r, &empty, MaxJSONBody) {
+			return
+		}
+		results, err := db.AdvanceAll(r.Context())
+		if err != nil {
+			engineError(w, err)
+			return
+		}
+		jsonResponse(w, 200, results)
+	})
 	mux.HandleFunc("GET /v1/streams/{name}", func(w http.ResponseWriter, r *http.Request) {
 		value, err := db.Stream(r.Context(), r.PathValue("name"))
 		if err != nil {

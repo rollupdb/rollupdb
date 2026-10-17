@@ -15,7 +15,7 @@ RollupDB is a Go embedded aggregate database storing declared numeric statistics
 
 ## Scope and known limitations
 
-The engine is single-writer, single-machine, and local-filesystem only. It does not expose SQL, clustering, remote authentication, dashboards, a background retention scheduler, definition edits or general-purpose raw-event search. Running SQLite WAL may create sidecar files: never copy only the live main database. Use `snapshot` and copy the completed export. Snapshot output is not atomically published, and a killed process can leave an incomplete destination. An explicit `Advance` may hold the engine mutex for a large backlog. Separate owner processes and network filesystems are unsupported. A timed-out or disconnected ingest request is not proof that its transaction rolled back. Retrying without an application-level reconciliation mechanism may double count.
+The engine is single-writer, single-machine, and local-filesystem only. It does not expose SQL, clustering, remote authentication, dashboards, definition edits or general-purpose raw-event search. Running SQLite WAL may create sidecar files: never copy only the live main database. Use `snapshot` and copy the completed export. Snapshot output is not atomically published, and a killed process can leave an incomplete destination. An explicit `Advance` may hold the engine mutex for a large backlog. Separate owner processes and network filesystems are unsupported. A timed-out or disconnected ingest request is not proof that its transaction rolled back. Retrying without an application-level reconciliation mechanism may double count.
 
 ## Known limits
 

@@ -293,3 +293,25 @@ func TestCLIVersion(t *testing.T) {
 		}
 	}
 }
+
+func TestCLIAdvanceAllStreams(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "all.rollupdb")
+	var out bytes.Buffer
+	ctx := context.Background()
+	for _, args := range [][]string{{"init", path}, {"create-stream", path, "../../examples/api_requests.json"}} {
+		if err := run(ctx, args, &out); err != nil {
+			t.Fatalf("%v: %v", args, err)
+		}
+	}
+	out.Reset()
+	if err := run(ctx, []string{"advance", path}, &out); err != nil {
+		t.Fatal(err)
+	}
+	var results map[string]rollupdb.AdvanceResult
+	if err := json.Unmarshal(out.Bytes(), &results); err != nil {
+		t.Fatalf("%v: %s", err, out.String())
+	}
+	if _, ok := results["api_requests"]; !ok {
+		t.Fatalf("advance FILE skipped the stream: %s", out.String())
+	}
+}

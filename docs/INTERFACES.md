@@ -38,10 +38,10 @@ The sample definition starts October 17, 2026 and rejects events before its effe
 ## HTTP service
 
 ```
-rollupdb serve FILE [--listen 127.0.0.1:7070]
+rollupdb serve FILE [--listen 127.0.0.1:7070] [--advance-every 1m]
 ```
 
-The file must already exist in the current format. The command never initializes or migrates it. Its first JSON line reports the actual listening address, including when port 0 chooses a free port. Only literal loopback IPs are allowed: 127.0.0.1 or [::1], for example. Wildcards, LAN IPs and hostnames are refused. Keep this as the one owning process for the file; use HTTP operations while it is running rather than opening another CLI writer.
+The file must already exist in the current format. The command never initializes or migrates it. While it runs it rolls up every stream once a minute (`--advance-every` changes the interval; `0` turns it off) and writes one JSON line per stream that did work, or per failure. Its first JSON line reports the actual listening address and the interval, including when port 0 chooses a free port. Only literal loopback IPs are allowed: 127.0.0.1 or [::1], for example. Wildcards, LAN IPs and hostnames are refused. Keep this as the one owning process for the file; use HTTP operations while it is running rather than opening another CLI writer.
 
 There is no authentication or TLS. This is a trusted local-process interface, not a multi-user security boundary. Host values must be localhost or a literal loopback address; requests with any Origin header are refused and CORS is not enabled. These checks help keep browser requests out; they do not authenticate a local client. The exported transport.NewHandler must also be placed behind a loopback listener by its owner. The CLI cannot opt into public binding.
 
@@ -54,6 +54,8 @@ There is no authentication or TLS. This is a trusted local-process interface, no
 | POST | /v1/ingest | One Batch; BatchResult after commit |
 | POST | /v1/query | Query; exact statistics, quantiles and coverage |
 | POST | /v1/streams/NAME/advance | Empty object {}; explicit retention result |
+| GET | /v1/streams | {"streams": [names]} |
+| POST | /v1/advance | Empty object {}; results for every stream, by name |
 | GET | /v1/snapshot | Standalone snapshot download |
 
 JSON POST requests require Content-Type: application/json, uncompressed UTF-8 object bodies, no unknown fields and no trailing objects. Other media types and compressed requests are refused. Ingest bodies are limited to 8 MiB; definitions, queries and advancement bodies to 1 MiB. Engine batches still have at most 10000 observations. HTTP ingestion is a single atomic JSON batch; streaming NDJSON is currently a CLI interface. Query parameters are unsupported.
