@@ -22,7 +22,8 @@ func TestKilledOwnerAfterAdvanceKeepsFrontiersAndSketches(t *testing.T) {
 	now := from.Add(5 * time.Minute)
 	if os.Getenv(helperKey) == "1" {
 		ctx := context.Background()
-		db, err := Create(ctx, os.Getenv(pathKey), WithClock(func() time.Time { return now }))
+		clock := from.Add(2 * time.Minute)
+		db, err := Create(ctx, os.Getenv(pathKey), WithClock(func() time.Time { return clock }))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -42,6 +43,7 @@ func TestKilledOwnerAfterAdvanceKeepsFrontiersAndSketches(t *testing.T) {
 		if err != nil || result.Accepted != 3 {
 			t.Fatalf("ingest: %+v %v", result, err)
 		}
+		clock = now
 		advanced, err := db.Advance(ctx, d.Name)
 		if err != nil || advanced.SourceBuckets != 3 || advanced.ParentBuckets != 1 {
 			t.Fatalf("advance: %+v %v", advanced, err)
