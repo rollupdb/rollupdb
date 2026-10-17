@@ -1,10 +1,10 @@
 # Quantile accuracy: KLL estimates against exact sorted references
-# recorded 2026-10-17 17:34 UTC with go1.27.2 linux/amd64
-# Linux 6.17.0-1022-azure, AMD EPYC 7763 64-Core Processor, 4 CPUs
+# recorded 2026-10-17 18:26 UTC with go1.27.2 linux/amd64
+# Linux 6.17.0-1022-azure, AMD EPYC 9V74 80-Core Processor, 4 CPUs
 # command: go run ./examples/accuracy -n 100000 -summary
 
 {
-  "generated_at_utc": "2026-10-17T17:34:02.835844898Z",
+  "generated_at_utc": "2026-10-17T18:26:28.579076105Z",
   "go_version": "go1.27.2",
   "platform": "linux/amd64",
   "sketch": {
@@ -24,9 +24,9 @@
       "raw_to_snapshot_ratio": 139.50892857142858,
       "reduction_fraction": 0.992832,
       "normalized_rank_error_model": 0.013294757464848584,
-      "max_observed_rank_error": 0.002829999999999999,
+      "max_observed_rank_error": 0.0050000000000000044,
       "observed_within_empirical_model": true,
-      "max_absolute_value_error": 0.002829999999999999,
+      "max_absolute_value_error": 0.005009999999999959,
       "exact_statistics_preserved": true,
       "quantile_values_identical_after_snapshot": true
     },
@@ -39,9 +39,9 @@
       "raw_to_snapshot_ratio": 97.65625,
       "reduction_fraction": 0.98976,
       "normalized_rank_error_model": 0.013294757464848584,
-      "max_observed_rank_error": 0.0033199999999999896,
+      "max_observed_rank_error": 0.0015100000000000113,
       "observed_within_empirical_model": true,
-      "max_absolute_value_error": 0.0033199999999999896,
+      "max_absolute_value_error": 0.0015199999999999658,
       "exact_statistics_preserved": true,
       "quantile_values_identical_after_snapshot": false
     },
@@ -54,9 +54,9 @@
       "raw_to_snapshot_ratio": 139.69203404017858,
       "reduction_fraction": 0.9928413956681855,
       "normalized_rank_error_model": 0.013294757464848584,
-      "max_observed_rank_error": 0.0008000000000000229,
+      "max_observed_rank_error": 0.0018200000000000438,
       "observed_within_empirical_model": true,
-      "max_absolute_value_error": 102.604505,
+      "max_absolute_value_error": 32.75999999999999,
       "exact_statistics_preserved": true,
       "quantile_values_identical_after_snapshot": true
     },
@@ -69,9 +69,9 @@
       "raw_to_snapshot_ratio": 97.784423828125,
       "reduction_fraction": 0.9897734223831222,
       "normalized_rank_error_model": 0.013294757464848584,
-      "max_observed_rank_error": 0.0035199999999999676,
+      "max_observed_rank_error": 0.00273000000000001,
       "observed_within_empirical_model": true,
-      "max_absolute_value_error": 39.60000000000002,
+      "max_absolute_value_error": 129.784505,
       "exact_statistics_preserved": true,
       "quantile_values_identical_after_snapshot": false
     },
@@ -84,9 +84,9 @@
       "raw_to_snapshot_ratio": 156.02608816964286,
       "reduction_fraction": 0.9935908154095825,
       "normalized_rank_error_model": 0.013294757464848584,
-      "max_observed_rank_error": 0.002670000000000061,
+      "max_observed_rank_error": 0.0043600000000000305,
       "observed_within_empirical_model": true,
-      "max_absolute_value_error": 8647.367430738535,
+      "max_absolute_value_error": 6767.253111819338,
       "exact_statistics_preserved": true,
       "quantile_values_identical_after_snapshot": true
     },
@@ -99,9 +99,9 @@
       "raw_to_snapshot_ratio": 109.21826171875,
       "reduction_fraction": 0.9908440220136893,
       "normalized_rank_error_model": 0.013294757464848584,
-      "max_observed_rank_error": 0.0017599999999999838,
+      "max_observed_rank_error": 0.0018000000000000238,
       "observed_within_empirical_model": true,
-      "max_absolute_value_error": 1596.3253356275945,
+      "max_absolute_value_error": 1296.2925075817348,
       "exact_statistics_preserved": true,
       "quantile_values_identical_after_snapshot": false
     },

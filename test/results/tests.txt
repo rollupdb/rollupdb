@@ -1,28 +1,28 @@
 # Every test, verbose
-# recorded 2026-10-17 17:33 UTC with go1.27.2 linux/amd64
-# Linux 6.17.0-1022-azure, AMD EPYC 7763 64-Core Processor, 4 CPUs
+# recorded 2026-10-17 18:26 UTC with go1.27.2 linux/amd64
+# Linux 6.17.0-1022-azure, AMD EPYC 9V74 80-Core Processor, 4 CPUs
 # command: go test -count=1 -v ./...
 
 === RUN   TestClockJumpIsRefusedAndWritesNothing
---- PASS: TestClockJumpIsRefusedAndWritesNothing (0.03s)
+--- PASS: TestClockJumpIsRefusedAndWritesNothing (0.95s)
 === RUN   TestClockStepDefaults
---- PASS: TestClockStepDefaults (0.02s)
+--- PASS: TestClockStepDefaults (0.51s)
 === RUN   TestKilledOwnerDuringAdvanceRollsBackPromotion
---- PASS: TestKilledOwnerDuringAdvanceRollsBackPromotion (0.03s)
+--- PASS: TestKilledOwnerDuringAdvanceRollsBackPromotion (0.47s)
 === RUN   TestKilledOwnerPreservesAcknowledgedIngestAndSketch
---- PASS: TestKilledOwnerPreservesAcknowledgedIngestAndSketch (0.04s)
+--- PASS: TestKilledOwnerPreservesAcknowledgedIngestAndSketch (0.12s)
 === RUN   TestKilledOwnerKeepsAcknowledgedDefinition
 --- PASS: TestKilledOwnerKeepsAcknowledgedDefinition (0.02s)
 === RUN   TestKilledOwnerAfterAdvanceKeepsFrontiersAndSketches
---- PASS: TestKilledOwnerAfterAdvanceKeepsFrontiersAndSketches (0.03s)
+--- PASS: TestKilledOwnerAfterAdvanceKeepsFrontiersAndSketches (0.02s)
 === RUN   TestKilledOwnerRollsBackUncommittedState
---- PASS: TestKilledOwnerRollsBackUncommittedState (0.02s)
+--- PASS: TestKilledOwnerRollsBackUncommittedState (0.01s)
 === RUN   TestCreateReopenAndDefinitions
 --- PASS: TestCreateReopenAndDefinitions (0.01s)
 === RUN   TestSnapshotCommittedStateCopyAndReopen
---- PASS: TestSnapshotCommittedStateCopyAndReopen (0.03s)
+--- PASS: TestSnapshotCommittedStateCopyAndReopen (0.04s)
 === RUN   TestSnapshotNoOverwriteAndCancellation
---- PASS: TestSnapshotNoOverwriteAndCancellation (0.01s)
+--- PASS: TestSnapshotNoOverwriteAndCancellation (0.00s)
 === RUN   TestOpenNeverCreatesOrAdopts
 --- PASS: TestOpenNeverCreatesOrAdopts (0.00s)
 === RUN   TestFutureFormatRejected
@@ -36,35 +36,35 @@
 === RUN   TestIngestQueryRestartAndSnapshot
 --- PASS: TestIngestQueryRestartAndSnapshot (0.02s)
 === RUN   TestGraceCutoffSurvivesClockRollbackAndRestart
---- PASS: TestGraceCutoffSurvivesClockRollbackAndRestart (0.02s)
+--- PASS: TestGraceCutoffSurvivesClockRollbackAndRestart (0.01s)
 === RUN   TestGroupLimitsCanonicalTuplesAndNumericRejections
---- PASS: TestGroupLimitsCanonicalTuplesAndNumericRejections (0.02s)
+--- PASS: TestGroupLimitsCanonicalTuplesAndNumericRejections (0.01s)
 === RUN   TestBatchFailureRollsBackStateGroupsCountersAndWatermark
 --- PASS: TestBatchFailureRollsBackStateGroupsCountersAndWatermark (0.01s)
 === RUN   TestInvalidEnvelopeCancellationAndLongGrace
---- PASS: TestInvalidEnvelopeCancellationAndLongGrace (0.04s)
+--- PASS: TestInvalidEnvelopeCancellationAndLongGrace (0.01s)
 === RUN   TestConcurrentIngestDoesNotLoseUpdates
---- PASS: TestConcurrentIngestDoesNotLoseUpdates (0.04s)
+--- PASS: TestConcurrentIngestDoesNotLoseUpdates (0.02s)
 === RUN   TestMinuteBucketsAreHalfOpen
 --- PASS: TestMinuteBucketsAreHalfOpen (0.01s)
 === RUN   TestLifetimeCounterOverflowRollsBackAcceptedState
 --- PASS: TestLifetimeCounterOverflowRollsBackAcceptedState (0.01s)
 === RUN   TestExplicitMigrationPreservesDefinitionAndIdentity
---- PASS: TestExplicitMigrationPreservesDefinitionAndIdentity (0.02s)
+--- PASS: TestExplicitMigrationPreservesDefinitionAndIdentity (0.01s)
 === RUN   TestFailedMigrationRollsBackDDLAndVersion
---- PASS: TestFailedMigrationRollsBackDDLAndVersion (0.02s)
+--- PASS: TestFailedMigrationRollsBackDDLAndVersion (0.01s)
 === RUN   TestRevision2MigrationKeepsExactStateWithoutInventingSketches
---- PASS: TestRevision2MigrationKeepsExactStateWithoutInventingSketches (0.03s)
+--- PASS: TestRevision2MigrationKeepsExactStateWithoutInventingSketches (0.02s)
 === RUN   TestRevision2MigrationFailurePreservesVersionAndBuckets
---- PASS: TestRevision2MigrationFailurePreservesVersionAndBuckets (0.03s)
+--- PASS: TestRevision2MigrationFailurePreservesVersionAndBuckets (0.02s)
 === RUN   TestQuantilePersistenceUpdateSnapshotAndUnavailableStates
---- PASS: TestQuantilePersistenceUpdateSnapshotAndUnavailableStates (0.07s)
+--- PASS: TestQuantilePersistenceUpdateSnapshotAndUnavailableStates (0.05s)
 === RUN   TestQuantileDatabaseMergesPartitionsAndFilters
---- PASS: TestQuantileDatabaseMergesPartitionsAndFilters (0.05s)
+--- PASS: TestQuantileDatabaseMergesPartitionsAndFilters (0.02s)
 === RUN   TestCorruptSketchPreventsMutation
---- PASS: TestCorruptSketchPreventsMutation (0.03s)
+--- PASS: TestCorruptSketchPreventsMutation (0.01s)
 === RUN   TestQuantileValidationAndExactOnlyHistory
---- PASS: TestQuantileValidationAndExactOnlyHistory (0.02s)
+--- PASS: TestQuantileValidationAndExactOnlyHistory (0.01s)
 === RUN   TestQueryJSONRejectsNullQuantile
 --- PASS: TestQueryJSONRejectsNullQuantile (0.00s)
 === RUN   TestQueryCoverageDistinguishesMissingEmptyAndCurrent
@@ -72,51 +72,69 @@
 === RUN   TestFinalSupportedBucketHasQueryableExclusiveEnd
 --- PASS: TestFinalSupportedBucketHasQueryableExclusiveEnd (0.01s)
 === RUN   TestQueryRejectsUnsupportedDetailAndUndeclaredFields
---- PASS: TestQueryRejectsUnsupportedDetailAndUndeclaredFields (0.02s)
+--- PASS: TestQueryRejectsUnsupportedDetailAndUndeclaredFields (0.01s)
 === RUN   TestDimensionTupleOrderingAndNoDimensions
---- PASS: TestDimensionTupleOrderingAndNoDimensions (0.02s)
+--- PASS: TestDimensionTupleOrderingAndNoDimensions (0.01s)
 === RUN   TestAdvanceCanceledAtCommitBoundaryRollsBackAllState
---- PASS: TestAdvanceCanceledAtCommitBoundaryRollsBackAllState (0.03s)
+--- PASS: TestAdvanceCanceledAtCommitBoundaryRollsBackAllState (0.02s)
 === RUN   TestPromotionBoundaryMixedQueryAndRestart
---- PASS: TestPromotionBoundaryMixedQueryAndRestart (0.03s)
+--- PASS: TestPromotionBoundaryMixedQueryAndRestart (0.02s)
 === RUN   TestExpiryAvailabilityAndGroupReclamation
 --- PASS: TestExpiryAvailabilityAndGroupReclamation (0.02s)
 === RUN   TestSparseAdvanceAndNoInventedCollection
 --- PASS: TestSparseAdvanceAndNoInventedCollection (0.01s)
 === RUN   TestZeroGraceClockRollbackAndForeverRetention
---- PASS: TestZeroGraceClockRollbackAndForeverRetention (0.07s)
+--- PASS: TestZeroGraceClockRollbackAndForeverRetention (0.01s)
 === RUN   TestAdvanceRollbackAtEveryPublicationStage
 === RUN   TestAdvanceRollbackAtEveryPublicationStage/CREATE_TRIGGER_fail_BEFORE_INSERT_ON_buckets_WHEN_NEW.tier=1_BEGIN_SELECT_RAISE(ABORT,'parent');_END
 === RUN   TestAdvanceRollbackAtEveryPublicationStage/CREATE_TRIGGER_fail_BEFORE_DELETE_ON_buckets_WHEN_OLD.tier=0_BEGIN_SELECT_RAISE(ABORT,'source');_END
 === RUN   TestAdvanceRollbackAtEveryPublicationStage/CREATE_TRIGGER_fail_BEFORE_INSERT_ON_retention_frontiers_BEGIN_SELECT_RAISE(ABORT,'frontier');_END
 === RUN   TestAdvanceRollbackAtEveryPublicationStage/CREATE_TRIGGER_fail_BEFORE_UPDATE_ON_stream_runtime_BEGIN_SELECT_RAISE(ABORT,'watermark');_END
 === RUN   TestAdvanceRollbackAtEveryPublicationStage/CREATE_TRIGGER_fail_BEFORE_DELETE_ON_dimension_groups_BEGIN_SELECT_RAISE(ABORT,'reclaim');_END
---- PASS: TestAdvanceRollbackAtEveryPublicationStage (0.13s)
+--- PASS: TestAdvanceRollbackAtEveryPublicationStage (0.11s)
     --- PASS: TestAdvanceRollbackAtEveryPublicationStage/CREATE_TRIGGER_fail_BEFORE_INSERT_ON_buckets_WHEN_NEW.tier=1_BEGIN_SELECT_RAISE(ABORT,'parent');_END (0.02s)
     --- PASS: TestAdvanceRollbackAtEveryPublicationStage/CREATE_TRIGGER_fail_BEFORE_DELETE_ON_buckets_WHEN_OLD.tier=0_BEGIN_SELECT_RAISE(ABORT,'source');_END (0.02s)
     --- PASS: TestAdvanceRollbackAtEveryPublicationStage/CREATE_TRIGGER_fail_BEFORE_INSERT_ON_retention_frontiers_BEGIN_SELECT_RAISE(ABORT,'frontier');_END (0.02s)
-    --- PASS: TestAdvanceRollbackAtEveryPublicationStage/CREATE_TRIGGER_fail_BEFORE_UPDATE_ON_stream_runtime_BEGIN_SELECT_RAISE(ABORT,'watermark');_END (0.03s)
-    --- PASS: TestAdvanceRollbackAtEveryPublicationStage/CREATE_TRIGGER_fail_BEFORE_DELETE_ON_dimension_groups_BEGIN_SELECT_RAISE(ABORT,'reclaim');_END (0.03s)
+    --- PASS: TestAdvanceRollbackAtEveryPublicationStage/CREATE_TRIGGER_fail_BEFORE_UPDATE_ON_stream_runtime_BEGIN_SELECT_RAISE(ABORT,'watermark');_END (0.04s)
+    --- PASS: TestAdvanceRollbackAtEveryPublicationStage/CREATE_TRIGGER_fail_BEFORE_DELETE_ON_dimension_groups_BEGIN_SELECT_RAISE(ABORT,'reclaim');_END (0.02s)
 === RUN   TestCorruptSketchAbortsPromotionWithoutProgress
---- PASS: TestCorruptSketchAbortsPromotionWithoutProgress (0.02s)
+--- PASS: TestCorruptSketchAbortsPromotionWithoutProgress (0.10s)
 === RUN   TestRevision3MigrationAndFailure
 === RUN   TestRevision3MigrationAndFailure/migrate
 === RUN   TestRevision3MigrationAndFailure/rollback
---- PASS: TestRevision3MigrationAndFailure (0.05s)
-    --- PASS: TestRevision3MigrationAndFailure/migrate (0.03s)
+--- PASS: TestRevision3MigrationAndFailure (0.04s)
+    --- PASS: TestRevision3MigrationAndFailure/migrate (0.02s)
     --- PASS: TestRevision3MigrationAndFailure/rollback (0.02s)
 === RUN   TestFourTierSparseHistoryKeepsWeightedStateAndEstimatedQuantiles
---- PASS: TestFourTierSparseHistoryKeepsWeightedStateAndEstimatedQuantiles (0.22s)
+--- PASS: TestFourTierSparseHistoryKeepsWeightedStateAndEstimatedQuantiles (0.16s)
 === RUN   TestSingleTierExpiryAndMaximumPolicyArithmetic
---- PASS: TestSingleTierExpiryAndMaximumPolicyArithmetic (0.02s)
+--- PASS: TestSingleTierExpiryAndMaximumPolicyArithmetic (0.01s)
 === RUN   TestAdvanceInvalidClosedCanceledAndInactive
 --- PASS: TestAdvanceInvalidClosedCanceledAndInactive (0.01s)
 === RUN   TestIngestionAfterPromotionUsesFinestGraceOnly
---- PASS: TestIngestionAfterPromotionUsesFinestGraceOnly (0.02s)
+--- PASS: TestIngestionAfterPromotionUsesFinestGraceOnly (0.01s)
 === RUN   TestRevision3MigrationPreservesPersistedSketchBytes
 --- PASS: TestRevision3MigrationPreservesPersistedSketchBytes (0.01s)
+=== RUN   TestSQLCancelledQueryKeepsWritesWorking
+--- PASS: TestSQLCancelledQueryKeepsWritesWorking (0.14s)
+=== RUN   TestLongerGraceDoesNotReopenRolledUpTime
+--- PASS: TestLongerGraceDoesNotReopenRolledUpTime (0.02s)
+=== RUN   TestSketchAddedAfterClockStepBack
+--- PASS: TestSketchAddedAfterClockStepBack (0.02s)
+=== RUN   TestPromotionAcrossTheSketchStart
+--- PASS: TestPromotionAcrossTheSketchStart (0.01s)
+=== RUN   TestSQLViewNamesNeverShadowTables
+--- PASS: TestSQLViewNamesNeverShadowTables (0.01s)
+=== RUN   TestRollupQuantileValidatesLiteralSketches
+--- PASS: TestRollupQuantileValidatesLiteralSketches (0.00s)
+=== RUN   TestAdvanceAllKeepsResultsAlongsideFailures
+--- PASS: TestAdvanceAllKeepsResultsAlongsideFailures (0.01s)
+=== RUN   TestStreamsAndAdvanceAll
+--- PASS: TestStreamsAndAdvanceAll (0.02s)
+=== RUN   TestRunRetentionReportsWorkAndStops
+--- PASS: TestRunRetentionReportsWorkAndStops (0.07s)
 === RUN   TestSketchCodecRoundTripAcrossCapacities
---- PASS: TestSketchCodecRoundTripAcrossCapacities (0.00s)
+--- PASS: TestSketchCodecRoundTripAcrossCapacities (0.01s)
 === RUN   TestSketchAccuracyDirectAndUnequalPartitionMerges
 === RUN   TestSketchAccuracyDirectAndUnequalPartitionMerges/uniform
 === RUN   TestSketchAccuracyDirectAndUnequalPartitionMerges/skewed
@@ -159,6 +177,14 @@
     --- PASS: TestSketchRejectsMalformedAndUnknownEncoding/levels_overflow (0.00s)
     --- PASS: TestSketchRejectsMalformedAndUnknownEncoding/levels_zero (0.00s)
     --- PASS: TestSketchRejectsMalformedAndUnknownEncoding/level_index (0.00s)
+=== RUN   TestSQLMatchesQueryAcrossTiers
+--- PASS: TestSQLMatchesQueryAcrossTiers (0.02s)
+=== RUN   TestSQLIsReadOnly
+--- PASS: TestSQLIsReadOnly (0.02s)
+=== RUN   TestSQLRowLimitAndQuantileWithoutSketches
+--- PASS: TestSQLRowLimitAndQuantileWithoutSketches (0.02s)
+=== RUN   TestSingleReadStatement
+--- PASS: TestSingleReadStatement (0.00s)
 === RUN   TestExactStateAgainstRationalReference
 --- PASS: TestExactStateAgainstRationalReference (0.00s)
 === RUN   TestWeightedMergeAndCompensatedSum
@@ -166,49 +192,55 @@
 === RUN   TestExactStateEmptySingletonAndOverflow
 --- PASS: TestExactStateEmptySingletonAndOverflow (0.00s)
 === RUN   TestDefinitionValidation
-=== RUN   TestDefinitionValidation/duplicate_statistic
-=== RUN   TestDefinitionValidation/decreasing_retention
-=== RUN   TestDefinitionValidation/negative_grace
-=== RUN   TestDefinitionValidation/retention_shorter_than_grace
-=== RUN   TestDefinitionValidation/unaligned_retention
-=== RUN   TestDefinitionValidation/version
-=== RUN   TestDefinitionValidation/no_statistics
-=== RUN   TestDefinitionValidation/unknown_statistic
 === RUN   TestDefinitionValidation/month
-=== RUN   TestDefinitionValidation/identifier
-=== RUN   TestDefinitionValidation/nonincreasing_width
-=== RUN   TestDefinitionValidation/forever_before_final
-=== RUN   TestDefinitionValidation/fractional_effective
-=== RUN   TestDefinitionValidation/no_tiers
-=== RUN   TestDefinitionValidation/decreasing_grace
+=== RUN   TestDefinitionValidation/unaligned_retention
 === RUN   TestDefinitionValidation/unaligned_effective
 === RUN   TestDefinitionValidation/zero_effective
+=== RUN   TestDefinitionValidation/no_statistics
+=== RUN   TestDefinitionValidation/no_tiers
+=== RUN   TestDefinitionValidation/nonincreasing_width
+=== RUN   TestDefinitionValidation/forever_before_final
+=== RUN   TestDefinitionValidation/negative_grace
+=== RUN   TestDefinitionValidation/retention_shorter_than_grace
+=== RUN   TestDefinitionValidation/unknown_statistic
+=== RUN   TestDefinitionValidation/duplicate_statistic
+=== RUN   TestDefinitionValidation/decreasing_retention
+=== RUN   TestDefinitionValidation/identifier
 === RUN   TestDefinitionValidation/group_limit
 === RUN   TestDefinitionValidation/duplicate_dimension
 === RUN   TestDefinitionValidation/dimension_name
+=== RUN   TestDefinitionValidation/decreasing_grace
+=== RUN   TestDefinitionValidation/fractional_effective
+=== RUN   TestDefinitionValidation/version
 --- PASS: TestDefinitionValidation (0.00s)
-    --- PASS: TestDefinitionValidation/duplicate_statistic (0.00s)
-    --- PASS: TestDefinitionValidation/decreasing_retention (0.00s)
-    --- PASS: TestDefinitionValidation/negative_grace (0.00s)
-    --- PASS: TestDefinitionValidation/retention_shorter_than_grace (0.00s)
-    --- PASS: TestDefinitionValidation/unaligned_retention (0.00s)
-    --- PASS: TestDefinitionValidation/version (0.00s)
-    --- PASS: TestDefinitionValidation/no_statistics (0.00s)
-    --- PASS: TestDefinitionValidation/unknown_statistic (0.00s)
     --- PASS: TestDefinitionValidation/month (0.00s)
-    --- PASS: TestDefinitionValidation/identifier (0.00s)
-    --- PASS: TestDefinitionValidation/nonincreasing_width (0.00s)
-    --- PASS: TestDefinitionValidation/forever_before_final (0.00s)
-    --- PASS: TestDefinitionValidation/fractional_effective (0.00s)
-    --- PASS: TestDefinitionValidation/no_tiers (0.00s)
-    --- PASS: TestDefinitionValidation/decreasing_grace (0.00s)
+    --- PASS: TestDefinitionValidation/unaligned_retention (0.00s)
     --- PASS: TestDefinitionValidation/unaligned_effective (0.00s)
     --- PASS: TestDefinitionValidation/zero_effective (0.00s)
+    --- PASS: TestDefinitionValidation/no_statistics (0.00s)
+    --- PASS: TestDefinitionValidation/no_tiers (0.00s)
+    --- PASS: TestDefinitionValidation/nonincreasing_width (0.00s)
+    --- PASS: TestDefinitionValidation/forever_before_final (0.00s)
+    --- PASS: TestDefinitionValidation/negative_grace (0.00s)
+    --- PASS: TestDefinitionValidation/retention_shorter_than_grace (0.00s)
+    --- PASS: TestDefinitionValidation/unknown_statistic (0.00s)
+    --- PASS: TestDefinitionValidation/duplicate_statistic (0.00s)
+    --- PASS: TestDefinitionValidation/decreasing_retention (0.00s)
+    --- PASS: TestDefinitionValidation/identifier (0.00s)
     --- PASS: TestDefinitionValidation/group_limit (0.00s)
     --- PASS: TestDefinitionValidation/duplicate_dimension (0.00s)
     --- PASS: TestDefinitionValidation/dimension_name (0.00s)
+    --- PASS: TestDefinitionValidation/decreasing_grace (0.00s)
+    --- PASS: TestDefinitionValidation/fractional_effective (0.00s)
+    --- PASS: TestDefinitionValidation/version (0.00s)
 === RUN   TestInvalidDefinitionNotPersistedAndOffsetNormalized
 --- PASS: TestInvalidDefinitionNotPersistedAndOffsetNormalized (0.01s)
+=== RUN   TestUpdateStreamChangesSettingsAndKeepsHistory
+--- PASS: TestUpdateStreamChangesSettingsAndKeepsHistory (0.01s)
+=== RUN   TestUpdateStreamRefusesStructuralChanges
+--- PASS: TestUpdateStreamRefusesStructuralChanges (0.01s)
+=== RUN   TestSketchAddedLaterLeavesOlderBucketsExactOnly
+--- PASS: TestSketchAddedLaterLeavesOlderBucketsExactOnly (0.02s)
 === RUN   FuzzSketchDecoderRejectsMalformedPayloads
 === RUN   FuzzSketchDecoderRejectsMalformedPayloads/seed#0
 === RUN   FuzzSketchDecoderRejectsMalformedPayloads/seed#1
@@ -218,30 +250,34 @@
     --- PASS: FuzzSketchDecoderRejectsMalformedPayloads/seed#1 (0.00s)
     --- PASS: FuzzSketchDecoderRejectsMalformedPayloads/seed#2 (0.00s)
 PASS
-ok  	github.com/rollupdb/rollupdb	1.482s
+ok  	github.com/rollupdb/rollupdb	3.408s
 === RUN   TestCLIFileLifecycle
---- PASS: TestCLIFileLifecycle (0.03s)
+--- PASS: TestCLIFileLifecycle (0.86s)
 === RUN   TestCLIExactIngestionQueriesAndStrictJSON
---- PASS: TestCLIExactIngestionQueriesAndStrictJSON (0.03s)
+--- PASS: TestCLIExactIngestionQueriesAndStrictJSON (0.64s)
 === RUN   TestCLIRejectsInvalidInvocationAndDefinitions
---- PASS: TestCLIRejectsInvalidInvocationAndDefinitions (0.02s)
+--- PASS: TestCLIRejectsInvalidInvocationAndDefinitions (0.06s)
 === RUN   TestCLIQuantileDefinitionAndQuery
 --- PASS: TestCLIQuantileDefinitionAndQuery (0.01s)
 === RUN   TestCLIStreamingInputAndPartialProgress
---- PASS: TestCLIStreamingInputAndPartialProgress (0.02s)
+--- PASS: TestCLIStreamingInputAndPartialProgress (0.01s)
 === RUN   TestCLIServeShutdownAndCanceledStdin
---- PASS: TestCLIServeShutdownAndCanceledStdin (0.02s)
+--- PASS: TestCLIServeShutdownAndCanceledStdin (0.01s)
 === RUN   TestCLIVersion
 --- PASS: TestCLIVersion (0.00s)
+=== RUN   TestCLIAdvanceAllStreams
+--- PASS: TestCLIAdvanceAllStreams (0.01s)
+=== RUN   TestCLISQL
+--- PASS: TestCLISQL (0.03s)
 PASS
-ok  	github.com/rollupdb/rollupdb/cmd/rollupdb	0.137s
+ok  	github.com/rollupdb/rollupdb/cmd/rollupdb	1.655s
 ?   	github.com/rollupdb/rollupdb/examples/accuracy	[no test files]
 === RUN   TestIndependentIntegerReferenceKnownDistribution
 --- PASS: TestIndependentIntegerReferenceKnownDistribution (0.00s)
 === RUN   TestReferenceReadsExternalSourceAndFiltersTimeAndGroup
---- PASS: TestReferenceReadsExternalSourceAndFiltersTimeAndGroup (0.02s)
+--- PASS: TestReferenceReadsExternalSourceAndFiltersTimeAndGroup (0.30s)
 PASS
-ok  	github.com/rollupdb/rollupdb/examples/history	0.028s
+ok  	github.com/rollupdb/rollupdb/examples/history	0.303s
 ?   	github.com/rollupdb/rollupdb/examples/replay	[no test files]
 ?   	github.com/rollupdb/rollupdb/examples/retention	[no test files]
 === RUN   TestDuplicateIntervalsAndNearestRank
@@ -249,15 +285,17 @@ ok  	github.com/rollupdb/rollupdb/examples/history	0.028s
 === RUN   TestNearestRankBoundaryRounding
 --- PASS: TestNearestRankBoundaryRounding (0.00s)
 PASS
-ok  	github.com/rollupdb/rollupdb/internal/accuracy	0.003s
+ok  	github.com/rollupdb/rollupdb/internal/accuracy	0.002s
 === RUN   TestHTTPFullLifecycleMatchesEmbeddedAndDownloadsSnapshot
---- PASS: TestHTTPFullLifecycleMatchesEmbeddedAndDownloadsSnapshot (0.02s)
+--- PASS: TestHTTPFullLifecycleMatchesEmbeddedAndDownloadsSnapshot (0.81s)
 === RUN   TestHTTPRejectsMalformedOversizedAndBrowserRequestsWithoutWrites
---- PASS: TestHTTPRejectsMalformedOversizedAndBrowserRequestsWithoutWrites (0.02s)
+--- PASS: TestHTTPRejectsMalformedOversizedAndBrowserRequestsWithoutWrites (0.13s)
 === RUN   TestLoopbackListenerAndGracefulServe
 --- PASS: TestLoopbackListenerAndGracefulServe (0.01s)
 === RUN   TestHTTPQuantileDefinitionAndNullRankRefusal
 --- PASS: TestHTTPQuantileDefinitionAndNullRankRefusal (0.01s)
+=== RUN   TestHTTPAdvanceAllReportsResultsAlongsideFailures
+--- PASS: TestHTTPAdvanceAllReportsResultsAlongsideFailures (0.01s)
 === RUN   TestNDJSONBatchesRejectionsAndFinalUnterminatedLine
 --- PASS: TestNDJSONBatchesRejectionsAndFinalUnterminatedLine (0.01s)
 === RUN   TestNDJSONMalformedDiscardsPendingButPreservesPreviousCommit
@@ -267,9 +305,9 @@ ok  	github.com/rollupdb/rollupdb/internal/accuracy	0.003s
 === RUN   TestNDJSONMalformedDiscardsPendingButPreservesPreviousCommit/{"time":"2026-10-17T12:02:00Z","value":3,"dimensions":{"service":"web"}}_{}
 === RUN   TestNDJSONMalformedDiscardsPendingButPreservesPreviousCommit/{"unknown":1}
 === RUN   TestNDJSONMalformedDiscardsPendingButPreservesPreviousCommit/{"x":"�"}
---- PASS: TestNDJSONMalformedDiscardsPendingButPreservesPreviousCommit (0.04s)
+--- PASS: TestNDJSONMalformedDiscardsPendingButPreservesPreviousCommit (0.07s)
     --- PASS: TestNDJSONMalformedDiscardsPendingButPreservesPreviousCommit/#00 (0.01s)
-    --- PASS: TestNDJSONMalformedDiscardsPendingButPreservesPreviousCommit/null (0.01s)
+    --- PASS: TestNDJSONMalformedDiscardsPendingButPreservesPreviousCommit/null (0.03s)
     --- PASS: TestNDJSONMalformedDiscardsPendingButPreservesPreviousCommit/{"time":"2026-10-17T12:02:00Z"} (0.01s)
     --- PASS: TestNDJSONMalformedDiscardsPendingButPreservesPreviousCommit/{"time":"2026-10-17T12:02:00Z","value":3,"dimensions":{"service":"web"}}_{} (0.01s)
     --- PASS: TestNDJSONMalformedDiscardsPendingButPreservesPreviousCommit/{"unknown":1} (0.01s)
@@ -281,4 +319,4 @@ ok  	github.com/rollupdb/rollupdb/internal/accuracy	0.003s
 === RUN   TestNDJSONReceiptFailureCancellationAndEngineFailure
 --- PASS: TestNDJSONReceiptFailureCancellationAndEngineFailure (0.01s)
 PASS
-ok  	github.com/rollupdb/rollupdb/transport	0.193s
+ok  	github.com/rollupdb/rollupdb/transport	1.145s

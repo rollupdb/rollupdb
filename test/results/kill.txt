@@ -1,8 +1,18 @@
 # Process-kill recovery tests, three runs
-# recorded 2026-10-17 17:34 UTC with go1.27.2 linux/amd64
-# Linux 6.17.0-1022-azure, AMD EPYC 7763 64-Core Processor, 4 CPUs
+# recorded 2026-10-17 18:26 UTC with go1.27.2 linux/amd64
+# Linux 6.17.0-1022-azure, AMD EPYC 9V74 80-Core Processor, 4 CPUs
 # command: go test -count=3 -v -run ^TestKilledOwner .
 
+=== RUN   TestKilledOwnerDuringAdvanceRollsBackPromotion
+--- PASS: TestKilledOwnerDuringAdvanceRollsBackPromotion (0.05s)
+=== RUN   TestKilledOwnerPreservesAcknowledgedIngestAndSketch
+--- PASS: TestKilledOwnerPreservesAcknowledgedIngestAndSketch (0.01s)
+=== RUN   TestKilledOwnerKeepsAcknowledgedDefinition
+--- PASS: TestKilledOwnerKeepsAcknowledgedDefinition (0.01s)
+=== RUN   TestKilledOwnerAfterAdvanceKeepsFrontiersAndSketches
+--- PASS: TestKilledOwnerAfterAdvanceKeepsFrontiersAndSketches (0.02s)
+=== RUN   TestKilledOwnerRollsBackUncommittedState
+--- PASS: TestKilledOwnerRollsBackUncommittedState (0.01s)
 === RUN   TestKilledOwnerDuringAdvanceRollsBackPromotion
 --- PASS: TestKilledOwnerDuringAdvanceRollsBackPromotion (0.02s)
 === RUN   TestKilledOwnerPreservesAcknowledgedIngestAndSketch
@@ -10,17 +20,7 @@
 === RUN   TestKilledOwnerKeepsAcknowledgedDefinition
 --- PASS: TestKilledOwnerKeepsAcknowledgedDefinition (0.01s)
 === RUN   TestKilledOwnerAfterAdvanceKeepsFrontiersAndSketches
---- PASS: TestKilledOwnerAfterAdvanceKeepsFrontiersAndSketches (0.01s)
-=== RUN   TestKilledOwnerRollsBackUncommittedState
---- PASS: TestKilledOwnerRollsBackUncommittedState (0.01s)
-=== RUN   TestKilledOwnerDuringAdvanceRollsBackPromotion
---- PASS: TestKilledOwnerDuringAdvanceRollsBackPromotion (0.01s)
-=== RUN   TestKilledOwnerPreservesAcknowledgedIngestAndSketch
---- PASS: TestKilledOwnerPreservesAcknowledgedIngestAndSketch (0.01s)
-=== RUN   TestKilledOwnerKeepsAcknowledgedDefinition
---- PASS: TestKilledOwnerKeepsAcknowledgedDefinition (0.01s)
-=== RUN   TestKilledOwnerAfterAdvanceKeepsFrontiersAndSketches
---- PASS: TestKilledOwnerAfterAdvanceKeepsFrontiersAndSketches (0.01s)
+--- PASS: TestKilledOwnerAfterAdvanceKeepsFrontiersAndSketches (0.03s)
 === RUN   TestKilledOwnerRollsBackUncommittedState
 --- PASS: TestKilledOwnerRollsBackUncommittedState (0.01s)
 === RUN   TestKilledOwnerDuringAdvanceRollsBackPromotion
@@ -34,4 +34,4 @@
 === RUN   TestKilledOwnerRollsBackUncommittedState
 --- PASS: TestKilledOwnerRollsBackUncommittedState (0.01s)
 PASS
-ok  	github.com/rollupdb/rollupdb	0.190s
+ok  	github.com/rollupdb/rollupdb	0.237s

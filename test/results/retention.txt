@@ -1,6 +1,6 @@
 # Retention: 20,000 observations rolled up, five years advanced, snapshot reopened
-# recorded 2026-10-17 17:34 UTC with go1.27.2 linux/amd64
-# Linux 6.17.0-1022-azure, AMD EPYC 7763 64-Core Processor, 4 CPUs
+# recorded 2026-10-17 18:26 UTC with go1.27.2 linux/amd64
+# Linux 6.17.0-1022-azure, AMD EPYC 9V74 80-Core Processor, 4 CPUs
 # command: go run ./examples/retention -n 20000
 
 {
@@ -88,22 +88,22 @@
       },
       {
         "rank": 0.5,
-        "value": 0.527275,
+        "value": 0.527925,
         "approximate": true
       },
       {
         "rank": 0.9,
-        "value": 0.947975,
+        "value": 0.947725,
         "approximate": true
       },
       {
         "rank": 0.95,
-        "value": 0.999475,
+        "value": 111.7225,
         "approximate": true
       },
       {
         "rank": 0.99,
-        "value": 760.6225000000001,
+        "value": 801.1225,
         "approximate": true
       },
       {
@@ -137,43 +137,43 @@
     },
     {
       "rank": 0.5,
-      "estimate": 0.527275,
+      "estimate": 0.527925,
       "exact_nearest_rank": 0.526325,
-      "rank_low": 0.50085,
-      "rank_high": 0.5009,
-      "normalized_rank_error_observed": 0.0008500000000000174,
-      "absolute_value_error": 0.0009500000000000064,
-      "relative_value_error": 0.0018049684130527835
+      "rank_low": 0.5015,
+      "rank_high": 0.50155,
+      "normalized_rank_error_observed": 0.0014999999999999458,
+      "absolute_value_error": 0.0015999999999999348,
+      "relative_value_error": 0.00303994680093086
     },
     {
       "rank": 0.9,
-      "estimate": 0.947975,
+      "estimate": 0.947725,
       "exact_nearest_rank": 0.947375,
-      "rank_low": 0.90055,
-      "rank_high": 0.9006,
-      "normalized_rank_error_observed": 0.0005499999999999394,
-      "absolute_value_error": 0.0006000000000000449,
-      "relative_value_error": 0.0006333289352157751
+      "rank_low": 0.9003,
+      "rank_high": 0.90035,
+      "normalized_rank_error_observed": 0.00029999999999996696,
+      "absolute_value_error": 0.0003500000000000725,
+      "relative_value_error": 0.00036944187887591766
     },
     {
       "rank": 0.95,
-      "estimate": 0.999475,
+      "estimate": 111.7225,
       "exact_nearest_rank": 0.999975,
-      "rank_low": 0.94945,
-      "rank_high": 0.9495,
-      "normalized_rank_error_observed": 0.0004999999999999449,
-      "absolute_value_error": 0.0004999999999999449,
-      "relative_value_error": 0.0005000125003124528
+      "rank_low": 0.95065,
+      "rank_high": 0.9507,
+      "normalized_rank_error_observed": 0.0006500000000000394,
+      "absolute_value_error": 110.72252499999999,
+      "relative_value_error": 110.7252931323283
     },
     {
       "rank": 0.99,
-      "estimate": 760.6225000000001,
+      "estimate": 801.1225,
       "exact_nearest_rank": 819.1225,
-      "rank_low": 0.9867,
-      "rank_high": 0.98675,
-      "normalized_rank_error_observed": 0.003249999999999975,
-      "absolute_value_error": 58.499999999999886,
-      "relative_value_error": 0.07141788926564695
+      "rank_low": 0.98895,
+      "rank_high": 0.989,
+      "normalized_rank_error_observed": 0.0010000000000000009,
+      "absolute_value_error": 18,
+      "relative_value_error": 0.021974735158660642
     },
     {
       "rank": 1,

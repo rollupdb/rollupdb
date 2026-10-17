@@ -1,13 +1,13 @@
 # Every test with the race detector
-# recorded 2026-10-17 17:33 UTC with go1.27.2 linux/amd64
-# Linux 6.17.0-1022-azure, AMD EPYC 7763 64-Core Processor, 4 CPUs
+# recorded 2026-10-17 18:26 UTC with go1.27.2 linux/amd64
+# Linux 6.17.0-1022-azure, AMD EPYC 9V74 80-Core Processor, 4 CPUs
 # command: env CGO_ENABLED=1 go test -race -count=1 ./...
 
-ok  	github.com/rollupdb/rollupdb	15.135s
-ok  	github.com/rollupdb/rollupdb/cmd/rollupdb	1.558s
+ok  	github.com/rollupdb/rollupdb	17.192s
+ok  	github.com/rollupdb/rollupdb/cmd/rollupdb	1.652s
 ?   	github.com/rollupdb/rollupdb/examples/accuracy	[no test files]
-ok  	github.com/rollupdb/rollupdb/examples/history	1.091s
+ok  	github.com/rollupdb/rollupdb/examples/history	1.097s
 ?   	github.com/rollupdb/rollupdb/examples/replay	[no test files]
 ?   	github.com/rollupdb/rollupdb/examples/retention	[no test files]
-ok  	github.com/rollupdb/rollupdb/internal/accuracy	1.011s
-ok  	github.com/rollupdb/rollupdb/transport	3.629s
+ok  	github.com/rollupdb/rollupdb/internal/accuracy	1.008s
+ok  	github.com/rollupdb/rollupdb/transport	3.280s
