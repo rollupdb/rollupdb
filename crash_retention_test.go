@@ -22,7 +22,7 @@ func TestKilledOwnerAfterAdvanceKeepsFrontiersAndSketches(t *testing.T) {
 	now := from.Add(5 * time.Minute)
 	if os.Getenv(helperKey) == "1" {
 		ctx := context.Background()
-		clock := from.Add(2 * time.Minute)
+		clock := from.Add(90 * time.Second)
 		db, err := Create(ctx, os.Getenv(pathKey), WithClock(func() time.Time { return clock }))
 		if err != nil {
 			t.Fatal(err)
