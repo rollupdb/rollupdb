@@ -39,6 +39,14 @@ PRAGMA user_version = 2;
 const schemaV3 = `ALTER TABLE buckets ADD COLUMN sketch BLOB;
 PRAGMA user_version=3;`
 
+const schemaV4 = `CREATE TABLE retention_frontiers (
+ stream TEXT NOT NULL, version INTEGER NOT NULL, tier INTEGER NOT NULL CHECK(tier >= 0),
+ through_ns INTEGER NOT NULL CHECK(through_ns >= 0),
+ PRIMARY KEY(stream,version,tier),
+ FOREIGN KEY(stream,version) REFERENCES stream_definitions(name,version)
+) STRICT;
+PRAGMA user_version=4;`
+
 func migrateCurrent(ctx context.Context, s *sql.DB, version int) error {
 	tx, err := s.BeginTx(ctx, nil)
 	if err != nil {
@@ -55,8 +63,13 @@ func migrateCurrent(ctx context.Context, s *sql.DB, version int) error {
 			return fmt.Errorf("migrate revision 1 to 2: %w", err)
 		}
 	}
-	if _, err = tx.ExecContext(ctx, schemaV3); err != nil {
-		return fmt.Errorf("migrate revision %d to 3: %w", version, err)
+	if version < 3 {
+		if _, err = tx.ExecContext(ctx, schemaV3); err != nil {
+			return fmt.Errorf("migrate revision %d to 3: %w", version, err)
+		}
+	}
+	if _, err = tx.ExecContext(ctx, schemaV4); err != nil {
+		return fmt.Errorf("migrate revision %d to 4: %w", version, err)
 	}
 	return tx.Commit()
 }

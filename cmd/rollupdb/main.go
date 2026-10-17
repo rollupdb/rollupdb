@@ -21,9 +21,9 @@ func main() {
 }
 
 func run(ctx context.Context, args []string, out io.Writer) (err error) {
-	const usage = "Usage: rollupdb init FILE | migrate FILE | inspect FILE | snapshot FILE DEST | create-stream FILE DEFINITION.json | stream FILE NAME | stats FILE NAME | ingest FILE BATCH.json | query FILE QUERY.json"
+	const usage = "Usage: rollupdb init FILE | migrate FILE | inspect FILE | snapshot FILE DEST | create-stream FILE DEFINITION.json | stream FILE NAME | stats FILE NAME | advance FILE NAME | ingest FILE BATCH.json | query FILE QUERY.json"
 	if len(args) == 1 && (args[0] == "help" || args[0] == "--help" || args[0] == "-h") {
-		_, err := fmt.Fprintln(out, "RollupDB prototype\n"+usage+"\nExact aggregation and optional KLL quantiles are available. Automatic rollups are not yet implemented.")
+		_, err := fmt.Fprintln(out, "RollupDB prototype\n"+usage+"\nExact aggregation and optional KLL quantiles are available. Run advance explicitly to promote and expire retained buckets.")
 		return err
 	}
 	if len(args) < 2 {
@@ -33,7 +33,7 @@ func run(ctx context.Context, args []string, out io.Writer) (err error) {
 	want := 2
 	switch op {
 	case "init", "inspect", "migrate":
-	case "snapshot", "create-stream", "stream", "ingest", "query", "stats":
+	case "snapshot", "create-stream", "stream", "ingest", "query", "stats", "advance":
 		want = 3
 	default:
 		return fmt.Errorf("unknown command %q", op)
@@ -77,6 +77,12 @@ func run(ctx context.Context, args []string, out io.Writer) (err error) {
 			return err
 		}
 		result, err := db.Query(ctx, query)
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(out).Encode(result)
+	case "advance":
+		result, err := db.Advance(ctx, args[2])
 		if err != nil {
 			return err
 		}

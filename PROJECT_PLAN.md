@@ -1,6 +1,6 @@
 RollupDB Project Plan
 
-Status: Session 3 optional KLL quantiles, guarded sketch storage and measured accuracy implemented; see RESUME.md for checkpoint and validation status.
+Status: Session 4 transactional retention, persisted frontiers and mixed-resolution queries implemented; see RESUME.md for checkpoint and validation status.
 Created: October 17, 2026.
 Code repository: https://github.com/rollupdb/rollupdb
 Future website: https://rollupdb.com
@@ -14,7 +14,7 @@ The first users are developers retaining numeric telemetry from APIs, devices an
 
 Storage and architecture
 
-Use Go for the engine and executable. Evaluate SQLite-backed storage first rather than spending the prototype budget building a transactional file engine. The first session must verify dependency portability, build complexity, transaction behavior and backup behavior before locking that decision. This is a proposed choice, not an implemented architecture.
+Use Go for the engine and executable. Evaluate SQLite-backed storage first rather than spending the prototype budget building a transactional file engine. The first session must verify dependency portability, build complexity, transaction behavior and backup behavior before locking that decision. The SQLite spike passed; this is the implemented storage choice, subject to future measurements.
 
 A closed database must be transferable as one .rollupdb file. Temporary transaction sidecars during operation are permissible and must be documented. Copying a live file is not a supported backup mechanism: provide a consistent snapshot command and demonstrate copying and reopening the resulting standalone file. A custom storage engine is a later option only if measurements identify a concrete limitation.
 
@@ -84,5 +84,5 @@ rollupdb.com will explain the product, show installation and a measured example,
 
 Resume
 
-Current state: Session 3 adds optional KLL float64 state, guarded checksummed serialization, equal-configuration merges, percentile queries with error/availability metadata, explicit revision-1/2 migration and measured direct/partitioned fixtures. Existing exact aggregation and snapshot paths remain supported. Automatic retention, a release and the website remain future work. See RESUME.md for the current checkpoint.
-Next action on an implementation command: inspect the current repository and any AGENTS.md instructions, read RESUME.md, then begin Session 4.
+Current state: Session 4 adds explicit atomic promotion/expiry, persisted empty-inclusive frontiers, mixed-resolution queries, historical expiry availability, group reclamation, format revision 4 migration and rollback/restart tests. A small four-tier retention demo records size alongside accuracy. Releases and the website remain future work. See RESUME.md for the current checkpoint.
+Next action on an implementation command: inspect the current repository and any AGENTS.md instructions, read RESUME.md, then begin Session 5.

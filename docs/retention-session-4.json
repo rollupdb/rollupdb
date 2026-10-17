@@ -1,0 +1,185 @@
+{
+  "result": "PASS",
+  "dataset": "skewed",
+  "observations": 20000,
+  "simulated_years": 5,
+  "serialized_input_bytes": 1602117,
+  "fine_snapshot_bytes": 299008,
+  "retained_snapshot_bytes": 53248,
+  "raw_to_retained_ratio": 30.08783428485577,
+  "fine_to_retained_ratio": 5.615384615384615,
+  "before_buckets": 120,
+  "advance": {
+    "observed_through_inclusive": "2031-10-17T00:00:00Z",
+    "frontiers": [
+      {
+        "tier": 0,
+        "through_exclusive": "2031-10-16T23:58:00Z"
+      },
+      {
+        "tier": 1,
+        "through_exclusive": "2031-10-16T23:00:00Z"
+      },
+      {
+        "tier": 2,
+        "through_exclusive": "2031-10-16T00:00:00Z"
+      },
+      {
+        "tier": 3,
+        "through_exclusive": "2026-10-17T00:00:00Z"
+      }
+    ],
+    "source_buckets_removed": 123,
+    "parent_buckets_created": 4,
+    "expired_buckets": 0,
+    "reclaimed_groups": 0
+  },
+  "retained_query": {
+    "resolutions": [
+      {
+        "from": "2026-10-17T00:00:00Z",
+        "to": "2026-10-18T00:00:00Z",
+        "tier": 3,
+        "width_seconds": 86400
+      }
+    ],
+    "requested": {
+      "from": "2026-10-17T00:00:00Z",
+      "to": "2026-10-18T00:00:00Z"
+    },
+    "covered": {
+      "from": "2026-10-17T00:00:00Z",
+      "to": "2026-10-18T00:00:00Z"
+    },
+    "missing": [],
+    "resolution_seconds": 86400,
+    "definition_version": 1,
+    "available_statistics": [
+      "count",
+      "sum",
+      "min",
+      "max",
+      "avg",
+      "variance_population",
+      "variance_sample",
+      "quantiles"
+    ],
+    "statistics": {
+      "avg": 27.95364875,
+      "count": 20000,
+      "max": 999.1225000000001,
+      "min": 0.000075,
+      "sum": 559072.975,
+      "variance_population": 17695.403474783467,
+      "variance_sample": 17696.288289197924
+    },
+    "complete": true,
+    "buckets_merged": 1,
+    "quantiles": [
+      {
+        "rank": 0,
+        "value": 0.000075,
+        "approximate": false
+      },
+      {
+        "rank": 0.5,
+        "value": 0.526125,
+        "approximate": true
+      },
+      {
+        "rank": 0.9,
+        "value": 0.948825,
+        "approximate": true
+      },
+      {
+        "rank": 0.95,
+        "value": 0.998975,
+        "approximate": true
+      },
+      {
+        "rank": 0.99,
+        "value": 779.5224999999999,
+        "approximate": true
+      },
+      {
+        "rank": 1,
+        "value": 999.1225000000001,
+        "approximate": false
+      }
+    ],
+    "quantile_accuracy": {
+      "availability": "available",
+      "algorithm": "kll_float64",
+      "encoding_version": 1,
+      "k": 200,
+      "m": 8,
+      "normalized_rank_error": 0.013294757464848584,
+      "error_model": "empirical_99_percent_max_rank_error",
+      "retained_items": 387,
+      "estimation_mode": true
+    }
+  },
+  "quantile_measurements": [
+    {
+      "rank": 0,
+      "estimate": 0.000075,
+      "exact_nearest_rank": 0.000075,
+      "rank_low": 0,
+      "rank_high": 0.00005,
+      "normalized_rank_error_observed": 0,
+      "absolute_value_error": 0,
+      "relative_value_error": 0
+    },
+    {
+      "rank": 0.5,
+      "estimate": 0.526125,
+      "exact_nearest_rank": 0.526325,
+      "rank_low": 0.49975,
+      "rank_high": 0.4998,
+      "normalized_rank_error_observed": 0.00019999999999997797,
+      "absolute_value_error": 0.000200000000000089,
+      "relative_value_error": 0.000379993350116542
+    },
+    {
+      "rank": 0.9,
+      "estimate": 0.948825,
+      "exact_nearest_rank": 0.947375,
+      "rank_low": 0.90135,
+      "rank_high": 0.9014,
+      "normalized_rank_error_observed": 0.0013499999999999623,
+      "absolute_value_error": 0.0014500000000000624,
+      "relative_value_error": 0.0015305449267714077
+    },
+    {
+      "rank": 0.95,
+      "estimate": 0.998975,
+      "exact_nearest_rank": 0.999975,
+      "rank_low": 0.949,
+      "rank_high": 0.94905,
+      "normalized_rank_error_observed": 0.0009500000000000064,
+      "absolute_value_error": 0.0010000000000000009,
+      "relative_value_error": 0.0010000250006250166
+    },
+    {
+      "rank": 0.99,
+      "estimate": 779.5224999999999,
+      "exact_nearest_rank": 819.1225,
+      "rank_low": 0.98775,
+      "rank_high": 0.9878,
+      "normalized_rank_error_observed": 0.0021999999999999797,
+      "absolute_value_error": 39.60000000000002,
+      "relative_value_error": 0.04834441734905344
+    },
+    {
+      "rank": 1,
+      "estimate": 999.1225000000001,
+      "exact_nearest_rank": 999.1225000000001,
+      "rank_low": 0.99995,
+      "rank_high": 1,
+      "normalized_rank_error_observed": 0,
+      "absolute_value_error": 0,
+      "relative_value_error": 0
+    }
+  ],
+  "measurement_scope": "One group; two minutes of observations followed by a five-year clock jump. Input bytes are serialized observations plus newline. Sizes are completed snapshots including metadata/indexes, excluding WAL, peak working disk and external reference memory. No continuous five-year workload or throughput claim."
+}

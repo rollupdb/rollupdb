@@ -37,6 +37,10 @@ jobs:
         env:
           CGO_ENABLED: '0'
         run: go run ./examples/accuracy -n 2000 -summary
+      - name: Retention and restart example
+        env:
+          CGO_ENABLED: '0'
+        run: go run ./examples/retention -n 2000
       - name: Build without CGo
         env:
           CGO_ENABLED: '0'

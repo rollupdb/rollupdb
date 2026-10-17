@@ -310,6 +310,7 @@ func (db *DB) Ingest(ctx context.Context, batch Batch) (BatchResult, error) {
 }
 
 type StreamStatus struct {
+	Frontiers []TierFrontier `json:"frontiers"`
 	Counters
 	Groups          int        `json:"groups"`
 	Buckets         int        `json:"buckets"`
@@ -329,14 +330,19 @@ func (db *DB) Status(ctx context.Context, name string) (StreamStatus, error) {
 		return StreamStatus{}, err
 	}
 	defer tx.Rollback()
-	if _, err = readDefinition(ctx, tx, name); err != nil {
+	d, err := readDefinition(ctx, tx, name)
+	if err != nil {
 		return StreamStatus{}, err
 	}
 	r, err := readRuntime(ctx, tx, name)
 	if err != nil {
 		return StreamStatus{}, err
 	}
-	s := StreamStatus{Counters: r.Counters}
+	f, err := readFrontiers(ctx, tx, d)
+	if err != nil {
+		return StreamStatus{}, err
+	}
+	s := StreamStatus{Counters: r.Counters, Frontiers: publicFrontiers(f)}
 	if r.CoverageStart.Valid {
 		t := time.Unix(0, r.CoverageStart.Int64).UTC()
 		s.CoverageStart = &t

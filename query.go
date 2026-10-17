@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 	"unicode/utf8"
 )
@@ -61,21 +62,30 @@ type CoverageGap struct {
 	Reason string `json:"reason"`
 }
 
-type QueryResult struct {
-	Requested           Interval           `json:"requested"`
-	Covered             *Interval          `json:"covered"`
-	Missing             []CoverageGap      `json:"missing"`
-	ResolutionSeconds   int64              `json:"resolution_seconds"`
-	DefinitionVersion   int                `json:"definition_version"`
-	AvailableStatistics []string           `json:"available_statistics"`
-	Statistics          map[string]any     `json:"statistics"`
-	Complete            bool               `json:"complete"`
-	BucketsMerged       int                `json:"buckets_merged"`
-	Quantiles           []QuantileEstimate `json:"quantiles,omitempty"`
-	QuantileAccuracy    *QuantileAccuracy  `json:"quantile_accuracy,omitempty"`
+// ResolutionInterval describes an authoritative portion of collected, retained
+// history, including covered intervals with no bucket rows.
+type ResolutionInterval struct {
+	Interval
+	Tier         int   `json:"tier"`
+	WidthSeconds int64 `json:"width_seconds"`
 }
 
-// Query combines the finest retained tier over aligned boundaries and declared
+type QueryResult struct {
+	Resolutions         []ResolutionInterval `json:"resolutions"`
+	Requested           Interval             `json:"requested"`
+	Covered             *Interval            `json:"covered"`
+	Missing             []CoverageGap        `json:"missing"`
+	ResolutionSeconds   int64                `json:"resolution_seconds"`
+	DefinitionVersion   int                  `json:"definition_version"`
+	AvailableStatistics []string             `json:"available_statistics"`
+	Statistics          map[string]any       `json:"statistics"`
+	Complete            bool                 `json:"complete"`
+	BucketsMerged       int                  `json:"buckets_merged"`
+	Quantiles           []QuantileEstimate   `json:"quantiles,omitempty"`
+	QuantileAccuracy    *QuantileAccuracy    `json:"quantile_accuracy,omitempty"`
+}
+
+// Query combines disjoint retained tiers over aligned boundaries and declared
 // dimension filters. It reports absent collection coverage separately from zero
 // observations. The current tier is never resampled or split proportionally.
 func (db *DB) Query(ctx context.Context, q Query) (QueryResult, error) {
@@ -128,103 +138,157 @@ func (db *DB) Query(ctx context.Context, q Query) (QueryResult, error) {
 	if err != nil {
 		return QueryResult{}, err
 	}
-	r := QueryResult{Requested: Interval{q.From.UTC(), q.To.UTC()}, Missing: []CoverageGap{}, ResolutionSeconds: d.Tiers[0].WidthSeconds, DefinitionVersion: 1, AvailableStatistics: append([]string(nil), d.Statistics...)}
+	r := QueryResult{Requested: Interval{q.From.UTC(), q.To.UTC()}, Missing: []CoverageGap{}, ResolutionSeconds: 0, DefinitionVersion: 1, AvailableStatistics: append([]string(nil), d.Statistics...)}
 	if d.Sketch != nil {
 		r.AvailableStatistics = append(r.AvailableStatistics, "quantiles")
 	}
 	start, end := q.From.UnixNano(), q.To.UnixNano()
+	frontiers, err := readFrontiers(ctx, tx, d)
+	if err != nil {
+		return QueryResult{}, err
+	}
+	expiredThrough := frontiers[len(frontiers)-1]
 	coverageFrom, coverageTo := end, start
-	if runtime.CoverageStart.Valid && runtime.Watermark.Valid {
-		coverageFrom = max(start, runtime.CoverageStart.Int64)
-		coverageTo = min(end, runtime.Watermark.Int64+1)
+	cuts := []int64{start, end}
+	for _, n := range []sql.NullInt64{runtime.CoverageStart, {Int64: expiredThrough, Valid: true}, {Int64: runtime.Watermark.Int64 + 1, Valid: runtime.Watermark.Valid}} {
+		if n.Valid && n.Int64 > start && n.Int64 < end {
+			cuts = append(cuts, n.Int64)
+		}
+	}
+	sort.Slice(cuts, func(i, j int) bool { return cuts[i] < cuts[j] })
+	for i := 1; i < len(cuts); i++ {
+		a, b := cuts[i-1], cuts[i]
+		if a == b {
+			continue
+		}
+		reason := ""
+		switch {
+		case !runtime.CoverageStart.Valid || !runtime.Watermark.Valid:
+			reason = "not_collected"
+			if runtime.Watermark.Valid && a > runtime.Watermark.Int64 {
+				reason = "not_observed_yet"
+			}
+		case a < runtime.CoverageStart.Int64:
+			reason = "not_collected"
+		case a > runtime.Watermark.Int64:
+			reason = "not_observed_yet"
+		case a < expiredThrough:
+			reason = "expired"
+		}
+		if reason == "" {
+			coverageFrom = min(coverageFrom, a)
+			coverageTo = max(coverageTo, b)
+			continue
+		}
+		gap := CoverageGap{Interval{time.Unix(0, a).UTC(), time.Unix(0, b).UTC()}, reason}
+		if len(r.Missing) > 0 && r.Missing[len(r.Missing)-1].Reason == reason && r.Missing[len(r.Missing)-1].To.Equal(gap.From) {
+			r.Missing[len(r.Missing)-1].To = gap.To
+		} else {
+			r.Missing = append(r.Missing, gap)
+		}
 	}
 	covered := coverageFrom < coverageTo
+	r.Resolutions = []ResolutionInterval{}
 	if covered {
 		r.Covered = &Interval{time.Unix(0, coverageFrom).UTC(), time.Unix(0, coverageTo).UTC()}
-		if start < coverageFrom {
-			r.Missing = append(r.Missing, CoverageGap{Interval{q.From.UTC(), time.Unix(0, coverageFrom).UTC()}, "not_collected"})
+		// Ownership bands are chronological from coarsest to finest. The adjacent
+		// frontier is aligned to this tier's width, including across empty history.
+		for tier := len(d.Tiers) - 1; tier >= 0; tier-- {
+			lo, hi := frontiers[tier], latestTime.UnixNano()
+			if tier > 0 {
+				hi = frontiers[tier-1]
+			}
+			a, b := max(lo, coverageFrom), min(hi, coverageTo)
+			if a >= b {
+				continue
+			}
+			width := d.Tiers[tier].WidthSeconds * int64(time.Second)
+			bucketFrom := a / width * width
+			bucketTo := (b-1)/width*width + width
+			if start > bucketFrom || end < bucketTo {
+				return QueryResult{}, ErrPartialBucket
+			}
+			r.Resolutions = append(r.Resolutions, ResolutionInterval{Interval{time.Unix(0, a).UTC(), time.Unix(0, b).UTC()}, tier, d.Tiers[tier].WidthSeconds})
+			r.ResolutionSeconds = max(r.ResolutionSeconds, d.Tiers[tier].WidthSeconds)
 		}
-		if coverageTo < end {
-			r.Missing = append(r.Missing, CoverageGap{Interval{time.Unix(0, coverageTo).UTC(), q.To.UTC()}, "not_observed_yet"})
-		}
-	} else {
-		reason := "not_collected"
-		if runtime.Watermark.Valid && start > runtime.Watermark.Int64 {
-			reason = "not_observed_yet"
-		}
-		r.Missing = append(r.Missing, CoverageGap{r.Requested, reason})
 	}
 	r.Complete = covered && coverageFrom == start && coverageTo == end
 	state := exactState{}
 	var sketch *quantileSketch
 	needSketch := len(q.Quantiles) > 0 && d.Sketch != nil
-	rows, err := tx.QueryContext(ctx, `SELECT tuple_key,n,sum,sum_comp,min,max,mean,m2,sketch FROM buckets WHERE stream=? AND version=1 AND tier=0 AND start_ns>=? AND start_ns<? ORDER BY start_ns,tuple_key`, d.Name, start, end)
-	if err != nil {
-		return QueryResult{}, err
-	}
-	for rows.Next() {
-		var key string
-		var b exactState
-		var encoded []byte
-		if err = rows.Scan(&key, &b.N, &b.Sum, &b.SumComp, &b.Min, &b.Max, &b.Mean, &b.M2, &encoded); err != nil {
-			break
+	for _, band := range r.Resolutions {
+		bandWidth := band.WidthSeconds * int64(time.Second)
+		rows, err := tx.QueryContext(ctx, `SELECT tuple_key,n,sum,sum_comp,min,max,mean,m2,sketch FROM buckets WHERE stream=? AND version=1 AND tier=? AND start_ns>=? AND start_ns<? ORDER BY start_ns,tuple_key`, d.Name, band.Tier, band.From.UnixNano()/bandWidth*bandWidth, band.To.UnixNano())
+		if err != nil {
+			return QueryResult{}, err
 		}
-		var values []string
-		if err = json.Unmarshal([]byte(key), &values); err != nil {
-			break
-		}
-		if len(values) != len(d.Dimensions) {
-			err = errors.New("rollupdb: corrupt dimension tuple")
-			break
-		}
-		match := true
-		for i, value := range filterIndices {
-			if values[i] != value {
-				match = false
+		for rows.Next() {
+			var key string
+			var b exactState
+			var encoded []byte
+			if err = rows.Scan(&key, &b.N, &b.Sum, &b.SumComp, &b.Min, &b.Max, &b.Mean, &b.M2, &encoded); err != nil {
 				break
 			}
-		}
-		if !match {
-			continue
-		}
-		if !covered {
-			err = errors.New("rollupdb: bucket outside recorded coverage")
-			break
-		}
-		if needSketch {
-			var next *quantileSketch
-			next, err = decodeQuantileSketch(encoded, *d.Sketch, b)
-			if err != nil {
+			var values []string
+			if err = json.Unmarshal([]byte(key), &values); err != nil {
 				break
 			}
-			if sketch == nil {
-				sketch = next
-			} else {
-				if err = sketch.merge(next); err != nil {
+			if len(values) != len(d.Dimensions) {
+				err = errors.New("rollupdb: corrupt dimension tuple")
+				break
+			}
+			match := true
+			for i, value := range filterIndices {
+				if values[i] != value {
+					match = false
 					break
 				}
 			}
+			if !match {
+				continue
+			}
+			if !covered {
+				err = errors.New("rollupdb: bucket outside recorded coverage")
+				break
+			}
+			if needSketch {
+				var next *quantileSketch
+				next, err = decodeQuantileSketch(encoded, *d.Sketch, b)
+				if err != nil {
+					break
+				}
+				if sketch == nil {
+					sketch = next
+				} else {
+					if err = sketch.merge(next); err != nil {
+						break
+					}
+				}
+			}
+			state, err = state.merge(b)
+			if err != nil {
+				break
+			}
+			r.BucketsMerged++
 		}
-		state, err = state.merge(b)
+		if err == nil {
+			err = rows.Err()
+		}
+		closeErr := rows.Close()
+		if err == nil {
+			err = closeErr
+		}
 		if err != nil {
-			break
+			return QueryResult{}, err
 		}
-		r.BucketsMerged++
-	}
-	if err == nil {
-		err = rows.Err()
-	}
-	closeErr := rows.Close()
-	if err == nil {
-		err = closeErr
-	}
-	if err != nil {
-		return QueryResult{}, err
 	}
 	r.Statistics = state.statistics(d.Statistics, covered)
 	r.Quantiles, r.QuantileAccuracy, err = quantileAnswers(q.Quantiles, d.Sketch, sketch, state, covered)
 	if err != nil {
 		return QueryResult{}, err
+	}
+	if !covered && r.QuantileAccuracy != nil && d.Sketch != nil && len(r.Missing) == 1 && r.Missing[0].Reason == "expired" {
+		r.QuantileAccuracy.Availability = "expired"
 	}
 	if err = tx.Commit(); err != nil {
 		return QueryResult{}, err

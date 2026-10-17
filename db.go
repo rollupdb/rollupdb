@@ -18,7 +18,7 @@ import (
 
 const (
 	// FormatVersion identifies the on-disk schema, independently of releases.
-	FormatVersion = 3
+	FormatVersion = 4
 	applicationID = 0x524c4442 // RLDB
 )
 
@@ -104,7 +104,7 @@ func Open(ctx context.Context, path string, options ...Option) (*DB, error) {
 	return open(ctx, abs, false, false, options...)
 }
 
-// Migrate explicitly upgrades a revision-1/2 file to revision 3 in one transaction.
+// Migrate explicitly upgrades a revision-1/2/3 file to revision 4 in one transaction.
 // Take a backup first. A current file is a no-op; unknown formats are refused.
 func Migrate(ctx context.Context, path string) error {
 	if path == "" {
@@ -170,7 +170,7 @@ func open(ctx context.Context, path string, fresh, upgrade bool, options ...Opti
 	if err = s.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil {
 		return nil, err
 	}
-	if (version == 1 || version == 2) && upgrade {
+	if version >= 1 && version < FormatVersion && upgrade {
 		if err = migrateCurrent(ctx, s, version); err != nil {
 			return nil, err
 		}
@@ -236,6 +236,9 @@ PRAGMA user_version = 1;
 		return err
 	}
 	if _, err = tx.ExecContext(ctx, schemaV3); err != nil {
+		return err
+	}
+	if _, err = tx.ExecContext(ctx, schemaV4); err != nil {
 		return err
 	}
 	if _, err = tx.ExecContext(ctx, "INSERT INTO store_meta VALUES (1, ?, ?)", hex.EncodeToString(random[:]), time.Now().UTC().Format(time.RFC3339Nano)); err != nil {

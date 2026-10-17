@@ -18,7 +18,7 @@ func TestCLIFileLifecycle(t *testing.T) {
 	source := filepath.Join(dir, "source.rollupdb")
 	dest := filepath.Join(dir, "snapshot.rollupdb")
 	var out bytes.Buffer
-	for _, args := range [][]string{{"init", source}, {"create-stream", source, "../../examples/api_requests.json"}, {"stream", source, "api_requests"}, {"snapshot", source, dest}, {"inspect", dest}} {
+	for _, args := range [][]string{{"init", source}, {"create-stream", source, "../../examples/api_requests.json"}, {"stream", source, "api_requests"}, {"advance", source, "api_requests"}, {"stats", source, "api_requests"}, {"snapshot", source, dest}, {"inspect", dest}} {
 		out.Reset()
 		if err := run(context.Background(), args, &out); err != nil {
 			t.Fatalf("%v: %v", args, err)
