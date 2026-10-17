@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -29,6 +30,15 @@ func newDB(t *testing.T) (*DB, string) {
 		}
 	})
 	return db, path
+}
+
+func unusualFilename(base string) string {
+	// '?' is a valid filename character on Unix, but Windows forbids it.
+	// Spaces, apostrophes, '#' and '%' exercise escaping on every target.
+	if runtime.GOOS != "windows" {
+		base += "?"
+	}
+	return base + " ' #%.rollupdb"
 }
 
 func TestCreateReopenAndDefinitions(t *testing.T) {
@@ -100,7 +110,7 @@ func TestSnapshotCommittedStateCopyAndReopen(t *testing.T) {
 	if _, err = tx.ExecContext(ctx, `INSERT INTO stream_definitions VALUES('uncommitted',1,'2026-10-17T00:00:00Z','{}')`); err != nil {
 		t.Fatal(err)
 	}
-	snapshot := filepath.Join(t.TempDir(), "snapshot ' quoted ?#.rollupdb")
+	snapshot := filepath.Join(t.TempDir(), unusualFilename("snapshot"))
 	if err = db.Snapshot(ctx, snapshot); err != nil {
 		t.Fatal(err)
 	}
@@ -258,7 +268,7 @@ func TestFutureFormatRejected(t *testing.T) {
 }
 
 func TestSourceFilenameEscaping(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "history ' ?#%.rollupdb")
+	path := filepath.Join(t.TempDir(), unusualFilename("history"))
 	db, err := Create(context.Background(), path)
 	if err != nil {
 		t.Fatal(err)
