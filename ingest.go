@@ -160,6 +160,9 @@ func (db *DB) Ingest(ctx context.Context, batch Batch) (BatchResult, error) {
 		return BatchResult{}, err
 	}
 	wallNS := now.UnixNano()
+	if err = db.checkClockStep(d.Name, wallNS, runtime.Watermark); err != nil {
+		return BatchResult{}, err
+	}
 	watermark := wallNS
 	if runtime.Watermark.Valid && runtime.Watermark.Int64 > watermark {
 		watermark = runtime.Watermark.Int64

@@ -25,10 +25,12 @@ the whole procedure and the checks to run afterwards.
   queries across resolutions, snapshot export, format revision 4.
 - CI (`test`) passes on Linux, macOS and Windows, including the process-kill
   recovery tests. Failing test lines show up as check-run annotations.
-- An independent review found no blockers. Its doc fixes are in. Two limits
-  are written up in `docs/RELEASE_CANDIDATE.md` rather than fixed: a
-  far-future clock reading is kept as the watermark for good, and large
-  HTTP snapshots can hit the request and write timeouts.
+- An independent review found no blockers; its doc fixes are in.
+- 0.1.1 (agreed with the owner): Ingest and Advance refuse a clock reading
+  more than `WithMaxClockStep` past a stream's watermark (`ErrClockJump`,
+  HTTP 409 `clock_jump`; default 366 days for the host clock, no limit for an
+  injected clock; CLI and server read `ROLLUPDB_MAX_CLOCK_STEP`), and
+  GET /v1/snapshot gets a 30-minute budget instead of the 30 s / 60 s limits.
 
 ## Next, agreed
 
@@ -40,9 +42,7 @@ the whole procedure and the checks to run afterwards.
    pages; posts for the launch, a plain-language explainer, how it was
    tested and the name.
 
-Not decided yet, ask the owner first: fixing the two limits above (refuse a
-clock reading too far ahead of the watermark; give `/v1/snapshot` its own
-deadlines), and any feature work after 0.1.
+Not decided yet, ask the owner first: any feature work after 0.1.
 
 ## Working here
 

@@ -23,6 +23,11 @@ const MaxJSONBody = 1 << 20
 const MaxIngestBody = 8 << 20
 const RequestTimeout = 30 * time.Second
 
+// SnapshotTimeout replaces RequestTimeout and the server's write timeout for
+// GET /v1/snapshot, which exports and then sends the whole database. It covers
+// both steps together.
+const SnapshotTimeout = 30 * time.Minute
+
 type Problem struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
@@ -50,6 +55,8 @@ func engineError(w http.ResponseWriter, err error) {
 		problem(w, 400, "invalid_request", "invalid engine request")
 	case errors.Is(err, rollupdb.ErrStreamNotActive):
 		problem(w, 409, "stream_not_active", "stream is not active at the host clock")
+	case errors.Is(err, rollupdb.ErrClockJump):
+		problem(w, 409, "clock_jump", "host clock is too far ahead of the stream's stored watermark; nothing was written")
 	case errors.Is(err, rollupdb.ErrNumericOverflow):
 		problem(w, 422, "numeric_overflow", "combined numerical state is unrepresentable")
 	case errors.Is(err, context.DeadlineExceeded):
@@ -186,7 +193,11 @@ func NewHandler(db *rollupdb.DB) http.Handler {
 		}
 		jsonResponse(w, 200, value)
 	})
-	mux.HandleFunc("GET /v1/snapshot", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(snapshotRoute, func(w http.ResponseWriter, r *http.Request) {
+		// The server's 60-second write timeout is for ordinary responses; a
+		// large export plus its download needs the snapshot budget instead.
+		// Writers that can't set deadlines (such as test recorders) don't need it.
+		_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(SnapshotTimeout))
 		dir, err := os.MkdirTemp("", "rollupdb-http-snapshot-")
 		if err != nil {
 			engineError(w, err)
@@ -251,11 +262,17 @@ func NewHandler(db *rollupdb.DB) http.Handler {
 			return
 		}
 		// ServeHTTP sets path wildcard values; Handler alone does not.
-		ctx, cancel := context.WithTimeout(r.Context(), RequestTimeout)
+		timeout := RequestTimeout
+		if pattern == snapshotRoute {
+			timeout = SnapshotTimeout
+		}
+		ctx, cancel := context.WithTimeout(r.Context(), timeout)
 		defer cancel()
 		mux.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
+
+const snapshotRoute = "GET /v1/snapshot"
 
 // Listen refuses nonliteral/nonloopback addresses, even if explicitly supplied.
 func Listen(address string) (net.Listener, error) {

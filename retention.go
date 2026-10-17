@@ -119,6 +119,9 @@ func (db *DB) Advance(ctx context.Context, name string) (AdvanceResult, error) {
 	if err != nil {
 		return AdvanceResult{}, err
 	}
+	if err = db.checkClockStep(d.Name, now.UnixNano(), runtime.Watermark); err != nil {
+		return AdvanceResult{}, err
+	}
 	watermark := now.UnixNano()
 	if runtime.Watermark.Valid {
 		watermark = max(watermark, runtime.Watermark.Int64)

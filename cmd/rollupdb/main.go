@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/rollupdb/rollupdb"
 	"github.com/rollupdb/rollupdb/transport"
@@ -62,11 +63,15 @@ func runWithInput(ctx context.Context, args []string, input io.Reader, out io.Wr
 	if op == "migrate" {
 		return rollupdb.Migrate(ctx, path)
 	}
+	options, err := clockOptions()
+	if err != nil {
+		return err
+	}
 	var db *rollupdb.DB
 	if op == "init" {
-		db, err = rollupdb.Create(ctx, path)
+		db, err = rollupdb.Create(ctx, path, options...)
 	} else {
-		db, err = rollupdb.Open(ctx, path)
+		db, err = rollupdb.Open(ctx, path, options...)
 	}
 	if err != nil {
 		return err
@@ -168,7 +173,11 @@ func importCommand(ctx context.Context, args []string, input io.Reader, out io.W
 		defer f.Close()
 		input = f
 	}
-	db, err := rollupdb.Open(ctx, args[0])
+	options, err := clockOptions()
+	if err != nil {
+		return err
+	}
+	db, err := rollupdb.Open(ctx, args[0], options...)
 	if err != nil {
 		return err
 	}
@@ -210,7 +219,11 @@ func serveCommand(ctx context.Context, args []string, out io.Writer) (err error)
 		return err
 	}
 	defer listener.Close()
-	db, err := rollupdb.Open(ctx, args[0])
+	options, err := clockOptions()
+	if err != nil {
+		return err
+	}
+	db, err := rollupdb.Open(ctx, args[0], options...)
 	if err != nil {
 		return err
 	}
@@ -221,4 +234,21 @@ func serveCommand(ctx context.Context, args []string, out io.Writer) (err error)
 		return err
 	}
 	return transport.Serve(ctx, db, listener)
+}
+
+// maxClockStepEnv changes how far the host clock may move past a stream's
+// stored watermark in one step (default rollupdb.DefaultMaxClockStep). A Go
+// duration such as 9000h; 0 removes the limit.
+const maxClockStepEnv = "ROLLUPDB_MAX_CLOCK_STEP"
+
+func clockOptions() ([]rollupdb.Option, error) {
+	value, ok := os.LookupEnv(maxClockStepEnv)
+	if !ok || value == "" {
+		return nil, nil
+	}
+	step, err := time.ParseDuration(value)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", maxClockStepEnv, err)
+	}
+	return []rollupdb.Option{rollupdb.WithMaxClockStep(step)}, nil
 }

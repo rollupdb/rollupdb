@@ -28,7 +28,17 @@ var (
 	ErrFormatVersion  = errors.New("rollupdb: unsupported format version")
 	ErrStreamExists   = errors.New("rollupdb: stream already exists")
 	ErrStreamNotFound = errors.New("rollupdb: stream not found")
+	// ErrClockJump reports a clock reading too far ahead of a stream's stored
+	// watermark. Nothing was written. See WithMaxClockStep.
+	ErrClockJump = errors.New("rollupdb: clock jumped too far ahead of the stored watermark")
 )
+
+// DefaultMaxClockStep is how far the host clock may move past a stream's stored
+// watermark in one step before Ingest and Advance refuse it. It catches a clock
+// set years ahead by mistake, which would otherwise become a permanent
+// watermark. It applies to the host clock only; an injected clock (WithClock)
+// has no limit unless WithMaxClockStep sets one.
+const DefaultMaxClockStep = 366 * 24 * time.Hour
 
 // DB owns one serialized SQLite connection. Use one owning process per file.
 // The handle is safe for concurrent Go callers; Close waits for active methods.
@@ -38,6 +48,12 @@ type DB struct {
 	path   string
 	closed bool
 	now    func() time.Time
+
+	// maxClockStep limits the forward step from a stored watermark; 0 is no
+	// limit. customClock and stepSet decide the default.
+	maxClockStep time.Duration
+	customClock  bool
+	stepSet      bool
 }
 
 // Option configures a handle. Production defaults to time.Now.
@@ -51,8 +67,38 @@ func WithClock(now func() time.Time) Option {
 			return errors.New("rollupdb: nil clock")
 		}
 		db.now = now
+		db.customClock = true
 		return nil
 	}
+}
+
+// WithMaxClockStep sets how far the clock may move past a stream's stored
+// watermark in one step. A reading further ahead makes Ingest and Advance fail
+// with ErrClockJump and write nothing, so a wrong clock can't become the
+// permanent watermark. Zero or a negative value removes the limit. If a gap is
+// real (a stream left idle longer than the limit), open the database once with
+// a larger step or no limit.
+func WithMaxClockStep(step time.Duration) Option {
+	return func(db *DB) error {
+		db.maxClockStep = max(step, 0)
+		db.stepSet = true
+		return nil
+	}
+}
+
+// checkClockStep refuses a clock reading more than maxClockStep past the stored
+// watermark. Both values are inside the supported time range, so the
+// difference can't overflow.
+func (db *DB) checkClockStep(stream string, now int64, watermark sql.NullInt64) error {
+	if db.maxClockStep <= 0 || !watermark.Valid || now <= watermark.Int64 {
+		return nil
+	}
+	if step := time.Duration(now - watermark.Int64); step > db.maxClockStep {
+		return fmt.Errorf("%w: stream %q, clock %s is %s past the watermark %s (limit %s)",
+			ErrClockJump, stream, time.Unix(0, now).UTC().Format(time.RFC3339),
+			step.Round(time.Second), time.Unix(0, watermark.Int64).UTC().Format(time.RFC3339), db.maxClockStep)
+	}
+	return nil
 }
 
 // Info describes a database without exposing its storage connection.
@@ -199,6 +245,9 @@ func open(ctx context.Context, path string, fresh, upgrade bool, options ...Opti
 		if err = option(db); err != nil {
 			return nil, err
 		}
+	}
+	if !db.stepSet && !db.customClock {
+		db.maxClockStep = DefaultMaxClockStep
 	}
 	return db, nil
 }

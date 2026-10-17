@@ -8,4 +8,4 @@ package rollupdb
 
 // Version is the RollupDB release version. Raising it on main releases it:
 // see RELEASING.md.
-const Version = "0.1.0"
+const Version = "0.1.1"
