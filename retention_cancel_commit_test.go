@@ -5,7 +5,6 @@ import (
 	"errors"
 	"reflect"
 	"testing"
-	"time"
 )
 
 // TestAdvanceCanceledAtCommitBoundaryRollsBackAllState checks cancellation
