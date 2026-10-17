@@ -1,0 +1,284 @@
+# Every test, verbose
+# recorded 2026-10-17 17:33 UTC with go1.27.2 linux/amd64
+# Linux 6.17.0-1022-azure, AMD EPYC 7763 64-Core Processor, 4 CPUs
+# command: go test -count=1 -v ./...
+
+=== RUN   TestClockJumpIsRefusedAndWritesNothing
+--- PASS: TestClockJumpIsRefusedAndWritesNothing (0.03s)
+=== RUN   TestClockStepDefaults
+--- PASS: TestClockStepDefaults (0.02s)
+=== RUN   TestKilledOwnerDuringAdvanceRollsBackPromotion
+--- PASS: TestKilledOwnerDuringAdvanceRollsBackPromotion (0.03s)
+=== RUN   TestKilledOwnerPreservesAcknowledgedIngestAndSketch
+--- PASS: TestKilledOwnerPreservesAcknowledgedIngestAndSketch (0.04s)
+=== RUN   TestKilledOwnerKeepsAcknowledgedDefinition
+--- PASS: TestKilledOwnerKeepsAcknowledgedDefinition (0.02s)
+=== RUN   TestKilledOwnerAfterAdvanceKeepsFrontiersAndSketches
+--- PASS: TestKilledOwnerAfterAdvanceKeepsFrontiersAndSketches (0.03s)
+=== RUN   TestKilledOwnerRollsBackUncommittedState
+--- PASS: TestKilledOwnerRollsBackUncommittedState (0.02s)
+=== RUN   TestCreateReopenAndDefinitions
+--- PASS: TestCreateReopenAndDefinitions (0.01s)
+=== RUN   TestSnapshotCommittedStateCopyAndReopen
+--- PASS: TestSnapshotCommittedStateCopyAndReopen (0.03s)
+=== RUN   TestSnapshotNoOverwriteAndCancellation
+--- PASS: TestSnapshotNoOverwriteAndCancellation (0.01s)
+=== RUN   TestOpenNeverCreatesOrAdopts
+--- PASS: TestOpenNeverCreatesOrAdopts (0.00s)
+=== RUN   TestFutureFormatRejected
+--- PASS: TestFutureFormatRejected (0.01s)
+=== RUN   TestSourceFilenameEscaping
+--- PASS: TestSourceFilenameEscaping (0.01s)
+=== RUN   TestConcurrentDefinitionWrites
+--- PASS: TestConcurrentDefinitionWrites (0.01s)
+=== RUN   TestIngestionBoundariesOutOfOrderAndCoverage
+--- PASS: TestIngestionBoundariesOutOfOrderAndCoverage (0.01s)
+=== RUN   TestIngestQueryRestartAndSnapshot
+--- PASS: TestIngestQueryRestartAndSnapshot (0.02s)
+=== RUN   TestGraceCutoffSurvivesClockRollbackAndRestart
+--- PASS: TestGraceCutoffSurvivesClockRollbackAndRestart (0.02s)
+=== RUN   TestGroupLimitsCanonicalTuplesAndNumericRejections
+--- PASS: TestGroupLimitsCanonicalTuplesAndNumericRejections (0.02s)
+=== RUN   TestBatchFailureRollsBackStateGroupsCountersAndWatermark
+--- PASS: TestBatchFailureRollsBackStateGroupsCountersAndWatermark (0.01s)
+=== RUN   TestInvalidEnvelopeCancellationAndLongGrace
+--- PASS: TestInvalidEnvelopeCancellationAndLongGrace (0.04s)
+=== RUN   TestConcurrentIngestDoesNotLoseUpdates
+--- PASS: TestConcurrentIngestDoesNotLoseUpdates (0.04s)
+=== RUN   TestMinuteBucketsAreHalfOpen
+--- PASS: TestMinuteBucketsAreHalfOpen (0.01s)
+=== RUN   TestLifetimeCounterOverflowRollsBackAcceptedState
+--- PASS: TestLifetimeCounterOverflowRollsBackAcceptedState (0.01s)
+=== RUN   TestExplicitMigrationPreservesDefinitionAndIdentity
+--- PASS: TestExplicitMigrationPreservesDefinitionAndIdentity (0.02s)
+=== RUN   TestFailedMigrationRollsBackDDLAndVersion
+--- PASS: TestFailedMigrationRollsBackDDLAndVersion (0.02s)
+=== RUN   TestRevision2MigrationKeepsExactStateWithoutInventingSketches
+--- PASS: TestRevision2MigrationKeepsExactStateWithoutInventingSketches (0.03s)
+=== RUN   TestRevision2MigrationFailurePreservesVersionAndBuckets
+--- PASS: TestRevision2MigrationFailurePreservesVersionAndBuckets (0.03s)
+=== RUN   TestQuantilePersistenceUpdateSnapshotAndUnavailableStates
+--- PASS: TestQuantilePersistenceUpdateSnapshotAndUnavailableStates (0.07s)
+=== RUN   TestQuantileDatabaseMergesPartitionsAndFilters
+--- PASS: TestQuantileDatabaseMergesPartitionsAndFilters (0.05s)
+=== RUN   TestCorruptSketchPreventsMutation
+--- PASS: TestCorruptSketchPreventsMutation (0.03s)
+=== RUN   TestQuantileValidationAndExactOnlyHistory
+--- PASS: TestQuantileValidationAndExactOnlyHistory (0.02s)
+=== RUN   TestQueryJSONRejectsNullQuantile
+--- PASS: TestQueryJSONRejectsNullQuantile (0.00s)
+=== RUN   TestQueryCoverageDistinguishesMissingEmptyAndCurrent
+--- PASS: TestQueryCoverageDistinguishesMissingEmptyAndCurrent (0.01s)
+=== RUN   TestFinalSupportedBucketHasQueryableExclusiveEnd
+--- PASS: TestFinalSupportedBucketHasQueryableExclusiveEnd (0.01s)
+=== RUN   TestQueryRejectsUnsupportedDetailAndUndeclaredFields
+--- PASS: TestQueryRejectsUnsupportedDetailAndUndeclaredFields (0.02s)
+=== RUN   TestDimensionTupleOrderingAndNoDimensions
+--- PASS: TestDimensionTupleOrderingAndNoDimensions (0.02s)
+=== RUN   TestAdvanceCanceledAtCommitBoundaryRollsBackAllState
+--- PASS: TestAdvanceCanceledAtCommitBoundaryRollsBackAllState (0.03s)
+=== RUN   TestPromotionBoundaryMixedQueryAndRestart
+--- PASS: TestPromotionBoundaryMixedQueryAndRestart (0.03s)
+=== RUN   TestExpiryAvailabilityAndGroupReclamation
+--- PASS: TestExpiryAvailabilityAndGroupReclamation (0.02s)
+=== RUN   TestSparseAdvanceAndNoInventedCollection
+--- PASS: TestSparseAdvanceAndNoInventedCollection (0.01s)
+=== RUN   TestZeroGraceClockRollbackAndForeverRetention
+--- PASS: TestZeroGraceClockRollbackAndForeverRetention (0.07s)
+=== RUN   TestAdvanceRollbackAtEveryPublicationStage
+=== RUN   TestAdvanceRollbackAtEveryPublicationStage/CREATE_TRIGGER_fail_BEFORE_INSERT_ON_buckets_WHEN_NEW.tier=1_BEGIN_SELECT_RAISE(ABORT,'parent');_END
+=== RUN   TestAdvanceRollbackAtEveryPublicationStage/CREATE_TRIGGER_fail_BEFORE_DELETE_ON_buckets_WHEN_OLD.tier=0_BEGIN_SELECT_RAISE(ABORT,'source');_END
+=== RUN   TestAdvanceRollbackAtEveryPublicationStage/CREATE_TRIGGER_fail_BEFORE_INSERT_ON_retention_frontiers_BEGIN_SELECT_RAISE(ABORT,'frontier');_END
+=== RUN   TestAdvanceRollbackAtEveryPublicationStage/CREATE_TRIGGER_fail_BEFORE_UPDATE_ON_stream_runtime_BEGIN_SELECT_RAISE(ABORT,'watermark');_END
+=== RUN   TestAdvanceRollbackAtEveryPublicationStage/CREATE_TRIGGER_fail_BEFORE_DELETE_ON_dimension_groups_BEGIN_SELECT_RAISE(ABORT,'reclaim');_END
+--- PASS: TestAdvanceRollbackAtEveryPublicationStage (0.13s)
+    --- PASS: TestAdvanceRollbackAtEveryPublicationStage/CREATE_TRIGGER_fail_BEFORE_INSERT_ON_buckets_WHEN_NEW.tier=1_BEGIN_SELECT_RAISE(ABORT,'parent');_END (0.02s)
+    --- PASS: TestAdvanceRollbackAtEveryPublicationStage/CREATE_TRIGGER_fail_BEFORE_DELETE_ON_buckets_WHEN_OLD.tier=0_BEGIN_SELECT_RAISE(ABORT,'source');_END (0.02s)
+    --- PASS: TestAdvanceRollbackAtEveryPublicationStage/CREATE_TRIGGER_fail_BEFORE_INSERT_ON_retention_frontiers_BEGIN_SELECT_RAISE(ABORT,'frontier');_END (0.02s)
+    --- PASS: TestAdvanceRollbackAtEveryPublicationStage/CREATE_TRIGGER_fail_BEFORE_UPDATE_ON_stream_runtime_BEGIN_SELECT_RAISE(ABORT,'watermark');_END (0.03s)
+    --- PASS: TestAdvanceRollbackAtEveryPublicationStage/CREATE_TRIGGER_fail_BEFORE_DELETE_ON_dimension_groups_BEGIN_SELECT_RAISE(ABORT,'reclaim');_END (0.03s)
+=== RUN   TestCorruptSketchAbortsPromotionWithoutProgress
+--- PASS: TestCorruptSketchAbortsPromotionWithoutProgress (0.02s)
+=== RUN   TestRevision3MigrationAndFailure
+=== RUN   TestRevision3MigrationAndFailure/migrate
+=== RUN   TestRevision3MigrationAndFailure/rollback
+--- PASS: TestRevision3MigrationAndFailure (0.05s)
+    --- PASS: TestRevision3MigrationAndFailure/migrate (0.03s)
+    --- PASS: TestRevision3MigrationAndFailure/rollback (0.02s)
+=== RUN   TestFourTierSparseHistoryKeepsWeightedStateAndEstimatedQuantiles
+--- PASS: TestFourTierSparseHistoryKeepsWeightedStateAndEstimatedQuantiles (0.22s)
+=== RUN   TestSingleTierExpiryAndMaximumPolicyArithmetic
+--- PASS: TestSingleTierExpiryAndMaximumPolicyArithmetic (0.02s)
+=== RUN   TestAdvanceInvalidClosedCanceledAndInactive
+--- PASS: TestAdvanceInvalidClosedCanceledAndInactive (0.01s)
+=== RUN   TestIngestionAfterPromotionUsesFinestGraceOnly
+--- PASS: TestIngestionAfterPromotionUsesFinestGraceOnly (0.02s)
+=== RUN   TestRevision3MigrationPreservesPersistedSketchBytes
+--- PASS: TestRevision3MigrationPreservesPersistedSketchBytes (0.01s)
+=== RUN   TestSketchCodecRoundTripAcrossCapacities
+--- PASS: TestSketchCodecRoundTripAcrossCapacities (0.00s)
+=== RUN   TestSketchAccuracyDirectAndUnequalPartitionMerges
+=== RUN   TestSketchAccuracyDirectAndUnequalPartitionMerges/uniform
+=== RUN   TestSketchAccuracyDirectAndUnequalPartitionMerges/skewed
+=== RUN   TestSketchAccuracyDirectAndUnequalPartitionMerges/heavy_tail
+=== RUN   TestSketchAccuracyDirectAndUnequalPartitionMerges/duplicates
+=== RUN   TestSketchAccuracyDirectAndUnequalPartitionMerges/constant
+--- PASS: TestSketchAccuracyDirectAndUnequalPartitionMerges (0.03s)
+    --- PASS: TestSketchAccuracyDirectAndUnequalPartitionMerges/uniform (0.01s)
+    --- PASS: TestSketchAccuracyDirectAndUnequalPartitionMerges/skewed (0.01s)
+    --- PASS: TestSketchAccuracyDirectAndUnequalPartitionMerges/heavy_tail (0.01s)
+    --- PASS: TestSketchAccuracyDirectAndUnequalPartitionMerges/duplicates (0.00s)
+    --- PASS: TestSketchAccuracyDirectAndUnequalPartitionMerges/constant (0.00s)
+=== RUN   TestSketchRejectsIncompatibleParametersWithoutMutation
+--- PASS: TestSketchRejectsIncompatibleParametersWithoutMutation (0.00s)
+=== RUN   TestSketchRejectsMalformedAndUnknownEncoding
+=== RUN   TestSketchRejectsMalformedAndUnknownEncoding/short
+=== RUN   TestSketchRejectsMalformedAndUnknownEncoding/checksum
+=== RUN   TestSketchRejectsMalformedAndUnknownEncoding/codec_version
+=== RUN   TestSketchRejectsMalformedAndUnknownEncoding/type
+=== RUN   TestSketchRejectsMalformedAndUnknownEncoding/settings
+=== RUN   TestSketchRejectsMalformedAndUnknownEncoding/count
+=== RUN   TestSketchRejectsMalformedAndUnknownEncoding/min_k
+=== RUN   TestSketchRejectsMalformedAndUnknownEncoding/truncated
+=== RUN   TestSketchRejectsMalformedAndUnknownEncoding/nonfinite
+=== RUN   TestSketchRejectsMalformedAndUnknownEncoding/native_version
+=== RUN   TestSketchRejectsMalformedAndUnknownEncoding/levels_overflow
+=== RUN   TestSketchRejectsMalformedAndUnknownEncoding/levels_zero
+=== RUN   TestSketchRejectsMalformedAndUnknownEncoding/level_index
+--- PASS: TestSketchRejectsMalformedAndUnknownEncoding (0.00s)
+    --- PASS: TestSketchRejectsMalformedAndUnknownEncoding/short (0.00s)
+    --- PASS: TestSketchRejectsMalformedAndUnknownEncoding/checksum (0.00s)
+    --- PASS: TestSketchRejectsMalformedAndUnknownEncoding/codec_version (0.00s)
+    --- PASS: TestSketchRejectsMalformedAndUnknownEncoding/type (0.00s)
+    --- PASS: TestSketchRejectsMalformedAndUnknownEncoding/settings (0.00s)
+    --- PASS: TestSketchRejectsMalformedAndUnknownEncoding/count (0.00s)
+    --- PASS: TestSketchRejectsMalformedAndUnknownEncoding/min_k (0.00s)
+    --- PASS: TestSketchRejectsMalformedAndUnknownEncoding/truncated (0.00s)
+    --- PASS: TestSketchRejectsMalformedAndUnknownEncoding/nonfinite (0.00s)
+    --- PASS: TestSketchRejectsMalformedAndUnknownEncoding/native_version (0.00s)
+    --- PASS: TestSketchRejectsMalformedAndUnknownEncoding/levels_overflow (0.00s)
+    --- PASS: TestSketchRejectsMalformedAndUnknownEncoding/levels_zero (0.00s)
+    --- PASS: TestSketchRejectsMalformedAndUnknownEncoding/level_index (0.00s)
+=== RUN   TestExactStateAgainstRationalReference
+--- PASS: TestExactStateAgainstRationalReference (0.00s)
+=== RUN   TestWeightedMergeAndCompensatedSum
+--- PASS: TestWeightedMergeAndCompensatedSum (0.00s)
+=== RUN   TestExactStateEmptySingletonAndOverflow
+--- PASS: TestExactStateEmptySingletonAndOverflow (0.00s)
+=== RUN   TestDefinitionValidation
+=== RUN   TestDefinitionValidation/duplicate_statistic
+=== RUN   TestDefinitionValidation/decreasing_retention
+=== RUN   TestDefinitionValidation/negative_grace
+=== RUN   TestDefinitionValidation/retention_shorter_than_grace
+=== RUN   TestDefinitionValidation/unaligned_retention
+=== RUN   TestDefinitionValidation/version
+=== RUN   TestDefinitionValidation/no_statistics
+=== RUN   TestDefinitionValidation/unknown_statistic
+=== RUN   TestDefinitionValidation/month
+=== RUN   TestDefinitionValidation/identifier
+=== RUN   TestDefinitionValidation/nonincreasing_width
+=== RUN   TestDefinitionValidation/forever_before_final
+=== RUN   TestDefinitionValidation/fractional_effective
+=== RUN   TestDefinitionValidation/no_tiers
+=== RUN   TestDefinitionValidation/decreasing_grace
+=== RUN   TestDefinitionValidation/unaligned_effective
+=== RUN   TestDefinitionValidation/zero_effective
+=== RUN   TestDefinitionValidation/group_limit
+=== RUN   TestDefinitionValidation/duplicate_dimension
+=== RUN   TestDefinitionValidation/dimension_name
+--- PASS: TestDefinitionValidation (0.00s)
+    --- PASS: TestDefinitionValidation/duplicate_statistic (0.00s)
+    --- PASS: TestDefinitionValidation/decreasing_retention (0.00s)
+    --- PASS: TestDefinitionValidation/negative_grace (0.00s)
+    --- PASS: TestDefinitionValidation/retention_shorter_than_grace (0.00s)
+    --- PASS: TestDefinitionValidation/unaligned_retention (0.00s)
+    --- PASS: TestDefinitionValidation/version (0.00s)
+    --- PASS: TestDefinitionValidation/no_statistics (0.00s)
+    --- PASS: TestDefinitionValidation/unknown_statistic (0.00s)
+    --- PASS: TestDefinitionValidation/month (0.00s)
+    --- PASS: TestDefinitionValidation/identifier (0.00s)
+    --- PASS: TestDefinitionValidation/nonincreasing_width (0.00s)
+    --- PASS: TestDefinitionValidation/forever_before_final (0.00s)
+    --- PASS: TestDefinitionValidation/fractional_effective (0.00s)
+    --- PASS: TestDefinitionValidation/no_tiers (0.00s)
+    --- PASS: TestDefinitionValidation/decreasing_grace (0.00s)
+    --- PASS: TestDefinitionValidation/unaligned_effective (0.00s)
+    --- PASS: TestDefinitionValidation/zero_effective (0.00s)
+    --- PASS: TestDefinitionValidation/group_limit (0.00s)
+    --- PASS: TestDefinitionValidation/duplicate_dimension (0.00s)
+    --- PASS: TestDefinitionValidation/dimension_name (0.00s)
+=== RUN   TestInvalidDefinitionNotPersistedAndOffsetNormalized
+--- PASS: TestInvalidDefinitionNotPersistedAndOffsetNormalized (0.01s)
+=== RUN   FuzzSketchDecoderRejectsMalformedPayloads
+=== RUN   FuzzSketchDecoderRejectsMalformedPayloads/seed#0
+=== RUN   FuzzSketchDecoderRejectsMalformedPayloads/seed#1
+=== RUN   FuzzSketchDecoderRejectsMalformedPayloads/seed#2
+--- PASS: FuzzSketchDecoderRejectsMalformedPayloads (0.00s)
+    --- PASS: FuzzSketchDecoderRejectsMalformedPayloads/seed#0 (0.00s)
+    --- PASS: FuzzSketchDecoderRejectsMalformedPayloads/seed#1 (0.00s)
+    --- PASS: FuzzSketchDecoderRejectsMalformedPayloads/seed#2 (0.00s)
+PASS
+ok  	github.com/rollupdb/rollupdb	1.482s
+=== RUN   TestCLIFileLifecycle
+--- PASS: TestCLIFileLifecycle (0.03s)
+=== RUN   TestCLIExactIngestionQueriesAndStrictJSON
+--- PASS: TestCLIExactIngestionQueriesAndStrictJSON (0.03s)
+=== RUN   TestCLIRejectsInvalidInvocationAndDefinitions
+--- PASS: TestCLIRejectsInvalidInvocationAndDefinitions (0.02s)
+=== RUN   TestCLIQuantileDefinitionAndQuery
+--- PASS: TestCLIQuantileDefinitionAndQuery (0.01s)
+=== RUN   TestCLIStreamingInputAndPartialProgress
+--- PASS: TestCLIStreamingInputAndPartialProgress (0.02s)
+=== RUN   TestCLIServeShutdownAndCanceledStdin
+--- PASS: TestCLIServeShutdownAndCanceledStdin (0.02s)
+=== RUN   TestCLIVersion
+--- PASS: TestCLIVersion (0.00s)
+PASS
+ok  	github.com/rollupdb/rollupdb/cmd/rollupdb	0.137s
+?   	github.com/rollupdb/rollupdb/examples/accuracy	[no test files]
+=== RUN   TestIndependentIntegerReferenceKnownDistribution
+--- PASS: TestIndependentIntegerReferenceKnownDistribution (0.00s)
+=== RUN   TestReferenceReadsExternalSourceAndFiltersTimeAndGroup
+--- PASS: TestReferenceReadsExternalSourceAndFiltersTimeAndGroup (0.02s)
+PASS
+ok  	github.com/rollupdb/rollupdb/examples/history	0.028s
+?   	github.com/rollupdb/rollupdb/examples/replay	[no test files]
+?   	github.com/rollupdb/rollupdb/examples/retention	[no test files]
+=== RUN   TestDuplicateIntervalsAndNearestRank
+--- PASS: TestDuplicateIntervalsAndNearestRank (0.00s)
+=== RUN   TestNearestRankBoundaryRounding
+--- PASS: TestNearestRankBoundaryRounding (0.00s)
+PASS
+ok  	github.com/rollupdb/rollupdb/internal/accuracy	0.003s
+=== RUN   TestHTTPFullLifecycleMatchesEmbeddedAndDownloadsSnapshot
+--- PASS: TestHTTPFullLifecycleMatchesEmbeddedAndDownloadsSnapshot (0.02s)
+=== RUN   TestHTTPRejectsMalformedOversizedAndBrowserRequestsWithoutWrites
+--- PASS: TestHTTPRejectsMalformedOversizedAndBrowserRequestsWithoutWrites (0.02s)
+=== RUN   TestLoopbackListenerAndGracefulServe
+--- PASS: TestLoopbackListenerAndGracefulServe (0.01s)
+=== RUN   TestHTTPQuantileDefinitionAndNullRankRefusal
+--- PASS: TestHTTPQuantileDefinitionAndNullRankRefusal (0.01s)
+=== RUN   TestNDJSONBatchesRejectionsAndFinalUnterminatedLine
+--- PASS: TestNDJSONBatchesRejectionsAndFinalUnterminatedLine (0.01s)
+=== RUN   TestNDJSONMalformedDiscardsPendingButPreservesPreviousCommit
+=== RUN   TestNDJSONMalformedDiscardsPendingButPreservesPreviousCommit/#00
+=== RUN   TestNDJSONMalformedDiscardsPendingButPreservesPreviousCommit/null
+=== RUN   TestNDJSONMalformedDiscardsPendingButPreservesPreviousCommit/{"time":"2026-10-17T12:02:00Z"}
+=== RUN   TestNDJSONMalformedDiscardsPendingButPreservesPreviousCommit/{"time":"2026-10-17T12:02:00Z","value":3,"dimensions":{"service":"web"}}_{}
+=== RUN   TestNDJSONMalformedDiscardsPendingButPreservesPreviousCommit/{"unknown":1}
+=== RUN   TestNDJSONMalformedDiscardsPendingButPreservesPreviousCommit/{"x":"�"}
+--- PASS: TestNDJSONMalformedDiscardsPendingButPreservesPreviousCommit (0.04s)
+    --- PASS: TestNDJSONMalformedDiscardsPendingButPreservesPreviousCommit/#00 (0.01s)
+    --- PASS: TestNDJSONMalformedDiscardsPendingButPreservesPreviousCommit/null (0.01s)
+    --- PASS: TestNDJSONMalformedDiscardsPendingButPreservesPreviousCommit/{"time":"2026-10-17T12:02:00Z"} (0.01s)
+    --- PASS: TestNDJSONMalformedDiscardsPendingButPreservesPreviousCommit/{"time":"2026-10-17T12:02:00Z","value":3,"dimensions":{"service":"web"}}_{} (0.01s)
+    --- PASS: TestNDJSONMalformedDiscardsPendingButPreservesPreviousCommit/{"unknown":1} (0.01s)
+    --- PASS: TestNDJSONMalformedDiscardsPendingButPreservesPreviousCommit/{"x":"�"} (0.01s)
+=== RUN   TestNDJSONReadErrorAndRecordBounds
+--- PASS: TestNDJSONReadErrorAndRecordBounds (0.01s)
+=== RUN   TestNDJSONByteCapacityFlushesBeforeCountLimit
+--- PASS: TestNDJSONByteCapacityFlushesBeforeCountLimit (0.06s)
+=== RUN   TestNDJSONReceiptFailureCancellationAndEngineFailure
+--- PASS: TestNDJSONReceiptFailureCancellationAndEngineFailure (0.01s)
+PASS
+ok  	github.com/rollupdb/rollupdb/transport	0.193s

@@ -1,0 +1,1260 @@
+# Five years of history: volume and cardinality cases against an outside reference
+# recorded 2026-10-17 17:34 UTC with go1.27.2 linux/amd64
+# Linux 6.17.0-1022-azure, AMD EPYC 7763 64-Core Processor, 4 CPUs
+# command: go run ./examples/history
+
+history: baseline, 1825 days, 2 groups, 16 observations per slot/group
+history: more_volume_same_groups_and_times, 1825 days, 2 groups, 32 observations per slot/group
+history: more_groups_same_event_count_and_times, 1825 days, 8 groups, 4 observations per slot/group
+{
+  "result": "PASS",
+  "format_version": 4,
+  "os": "linux",
+  "arch": "amd64",
+  "go_version": "go1.27.2",
+  "logical_cpus": 4,
+  "cpu_model": "AMD EPYC 7763 64-Core Processor",
+  "recorded_at": "2026-10-17T17:38:13.083088121Z",
+  "cases": [
+    {
+      "name": "baseline",
+      "settings": {
+        "final_retain_days_zero_means_forever": 0,
+        "days": 1825,
+        "slots_per_day": 24,
+        "groups": 2,
+        "observations_per_slot_and_group": 16
+      },
+      "observations": 1401600,
+      "serialized_input_bytes": 103707053,
+      "input_sha256": "336340bfc3facc1f7c62a9b2662607cf08aed255a1cd5ea0116bf651202c05c8",
+      "snapshot_bytes": 15339520,
+      "input_to_snapshot_ratio": 6.7607756305282045,
+      "live_before_snapshot": {
+        "main_bytes": 15388672,
+        "wal_bytes": 4243632,
+        "shm_bytes": 32768,
+        "other_database_directory_bytes": 0,
+        "total_bytes": 19665072
+      },
+      "closed_main_bytes": 15413248,
+      "peak_sampled_live_bytes": 19665072,
+      "peak_sampled_working_export_bytes": 50344112,
+      "reference_values_in_memory": 1401984,
+      "timings": {
+        "total_case_seconds": 50.123089947,
+        "engine_ingest_seconds": 8.587159896000012,
+        "engine_advance_seconds": 34.800351870999954,
+        "retained_query_milliseconds": 111.456989,
+        "snapshot_milliseconds": 38.777703
+      },
+      "status": {
+        "frontiers": [
+          {
+            "tier": 0,
+            "through_exclusive": "2024-12-29T12:34:00Z"
+          },
+          {
+            "tier": 1,
+            "through_exclusive": "2024-12-29T12:00:00Z"
+          },
+          {
+            "tier": 2,
+            "through_exclusive": "2024-12-23T00:00:00Z"
+          },
+          {
+            "tier": 3,
+            "through_exclusive": "2020-01-01T00:00:00Z"
+          }
+        ],
+        "accepted": 1401600,
+        "rejected_invalid": 0,
+        "rejected_late": 0,
+        "rejected_group_limit": 0,
+        "groups": 2,
+        "buckets": 3972,
+        "coverage_start": "2020-01-01T00:00:00Z",
+        "observed_through_inclusive": "2024-12-30T12:34:00Z"
+      },
+      "retained_query": {
+        "resolutions": [
+          {
+            "from": "2020-01-01T00:00:00Z",
+            "to": "2024-12-23T00:00:00Z",
+            "tier": 3,
+            "width_seconds": 86400
+          },
+          {
+            "from": "2024-12-23T00:00:00Z",
+            "to": "2024-12-29T12:00:00Z",
+            "tier": 2,
+            "width_seconds": 3600
+          },
+          {
+            "from": "2024-12-29T12:00:00Z",
+            "to": "2024-12-29T12:34:00Z",
+            "tier": 1,
+            "width_seconds": 60
+          },
+          {
+            "from": "2024-12-29T12:34:00Z",
+            "to": "2024-12-30T12:34:00Z",
+            "tier": 0,
+            "width_seconds": 1
+          }
+        ],
+        "requested": {
+          "from": "2020-01-01T00:00:00Z",
+          "to": "2024-12-30T12:34:00Z"
+        },
+        "covered": {
+          "from": "2020-01-01T00:00:00Z",
+          "to": "2024-12-30T12:34:00Z"
+        },
+        "missing": [],
+        "resolution_seconds": 86400,
+        "definition_version": 1,
+        "available_statistics": [
+          "count",
+          "sum",
+          "min",
+          "max",
+          "avg",
+          "variance_population",
+          "variance_sample",
+          "quantiles"
+        ],
+        "statistics": {
+          "avg": 2986.2125570776257,
+          "count": 1401600,
+          "max": 99940,
+          "min": 1,
+          "sum": 4185475520,
+          "variance_population": 157657638.05196977,
+          "variance_sample": 157657750.53609544
+        },
+        "complete": true,
+        "buckets_merged": 3972,
+        "quantiles": [
+          {
+            "rank": 0,
+            "value": 1,
+            "approximate": false
+          },
+          {
+            "rank": 0.5,
+            "value": 530,
+            "approximate": true
+          },
+          {
+            "rank": 0.9,
+            "value": 951,
+            "approximate": true
+          },
+          {
+            "rank": 0.95,
+            "value": 2820,
+            "approximate": true
+          },
+          {
+            "rank": 0.99,
+            "value": 72720,
+            "approximate": true
+          },
+          {
+            "rank": 1,
+            "value": 99940,
+            "approximate": false
+          }
+        ],
+        "quantile_accuracy": {
+          "availability": "available",
+          "algorithm": "kll_float64",
+          "encoding_version": 1,
+          "k": 200,
+          "m": 8,
+          "normalized_rank_error": 0.013294757464848584,
+          "error_model": "empirical_99_percent_max_rank_error",
+          "retained_items": 617,
+          "estimation_mode": true
+        }
+      },
+      "retained_comparison": {
+        "reference_statistics": {
+          "avg": 2986.2125570776257,
+          "count": 1401600,
+          "max": 99940,
+          "min": 1,
+          "sum": 4185475520,
+          "variance_population": 157657638.0519656,
+          "variance_sample": 157657750.53609127
+        },
+        "exact_absolute_error": {
+          "avg": 0,
+          "count": 0,
+          "max": 0,
+          "min": 0,
+          "sum": 0,
+          "variance_population": 0.000004172325134277344,
+          "variance_sample": 0.000004172325134277344
+        },
+        "quantile_measurements": [
+          {
+            "rank": 0,
+            "estimate": 1,
+            "exact_nearest_rank": 1,
+            "rank_low": 0,
+            "rank_high": 0.0010009988584474886,
+            "normalized_rank_error_observed": 0,
+            "absolute_value_error": 0,
+            "relative_value_error": 0
+          },
+          {
+            "rank": 0.5,
+            "estimate": 530,
+            "exact_nearest_rank": 526,
+            "rank_low": 0.5030022831050228,
+            "rank_high": 0.5040032819634703,
+            "normalized_rank_error_observed": 0.0030022831050228183,
+            "absolute_value_error": 4,
+            "relative_value_error": 0.0076045627376425855
+          },
+          {
+            "rank": 0.9,
+            "estimate": 951,
+            "exact_nearest_rank": 947,
+            "rank_low": 0.9030015696347032,
+            "rank_high": 0.9040004280821918,
+            "normalized_rank_error_observed": 0.003001569634703216,
+            "absolute_value_error": 4,
+            "relative_value_error": 0.004223864836325237
+          },
+          {
+            "rank": 0.95,
+            "estimate": 2820,
+            "exact_nearest_rank": 999,
+            "rank_low": 0.9508012271689498,
+            "rank_high": 0.9509011130136986,
+            "normalized_rank_error_observed": 0.000801227168949814,
+            "absolute_value_error": 1821,
+            "relative_value_error": 1.822822822822823
+          },
+          {
+            "rank": 0.99,
+            "estimate": 72720,
+            "exact_nearest_rank": 78600,
+            "rank_low": 0.9868949771689498,
+            "rank_high": 0.9869948630136987,
+            "normalized_rank_error_observed": 0.0030051369863013377,
+            "absolute_value_error": 5880,
+            "relative_value_error": 0.07480916030534351
+          },
+          {
+            "rank": 1,
+            "estimate": 99940,
+            "exact_nearest_rank": 99940,
+            "rank_low": 0.9999001141552512,
+            "rank_high": 1,
+            "normalized_rank_error_observed": 0,
+            "absolute_value_error": 0,
+            "relative_value_error": 0
+          }
+        ]
+      },
+      "copied_comparison": {
+        "reference_statistics": {
+          "avg": 2986.2125570776257,
+          "count": 1401600,
+          "max": 99940,
+          "min": 1,
+          "sum": 4185475520,
+          "variance_population": 157657638.0519656,
+          "variance_sample": 157657750.53609127
+        },
+        "exact_absolute_error": {
+          "avg": 0,
+          "count": 0,
+          "max": 0,
+          "min": 0,
+          "sum": 0,
+          "variance_population": 0.000004172325134277344,
+          "variance_sample": 0.000004172325134277344
+        },
+        "quantile_measurements": [
+          {
+            "rank": 0,
+            "estimate": 1,
+            "exact_nearest_rank": 1,
+            "rank_low": 0,
+            "rank_high": 0.0010009988584474886,
+            "normalized_rank_error_observed": 0,
+            "absolute_value_error": 0,
+            "relative_value_error": 0
+          },
+          {
+            "rank": 0.5,
+            "estimate": 528,
+            "exact_nearest_rank": 526,
+            "rank_low": 0.5010024257990867,
+            "rank_high": 0.5020027111872146,
+            "normalized_rank_error_observed": 0.0010024257990867147,
+            "absolute_value_error": 2,
+            "relative_value_error": 0.0038022813688212928
+          },
+          {
+            "rank": 0.9,
+            "estimate": 949,
+            "exact_nearest_rank": 947,
+            "rank_low": 0.9010045662100457,
+            "rank_high": 0.9020027111872146,
+            "normalized_rank_error_observed": 0.001004566210045632,
+            "absolute_value_error": 2,
+            "relative_value_error": 0.0021119324181626186
+          },
+          {
+            "rank": 0.95,
+            "estimate": 6640,
+            "exact_nearest_rank": 999,
+            "rank_low": 0.9526990582191781,
+            "rank_high": 0.9527996575342466,
+            "normalized_rank_error_observed": 0.002699058219178152,
+            "absolute_value_error": 5641,
+            "relative_value_error": 5.646646646646647
+          },
+          {
+            "rank": 0.99,
+            "estimate": 80420,
+            "exact_nearest_rank": 78600,
+            "rank_low": 0.9906942066210046,
+            "rank_high": 0.990794805936073,
+            "normalized_rank_error_observed": 0.0006942066210046116,
+            "absolute_value_error": 1820,
+            "relative_value_error": 0.023155216284987276
+          },
+          {
+            "rank": 1,
+            "estimate": 99940,
+            "exact_nearest_rank": 99940,
+            "rank_low": 0.9999001141552512,
+            "rank_high": 1,
+            "normalized_rank_error_observed": 0,
+            "absolute_value_error": 0,
+            "relative_value_error": 0
+          }
+        ]
+      },
+      "single_bucket_comparison": {
+        "reference_statistics": {
+          "avg": 2743.1666666666665,
+          "count": 384,
+          "max": 95640,
+          "min": 3,
+          "sum": 1053376,
+          "variance_population": 139249406.18055555,
+          "variance_sample": 139612981.65361184
+        },
+        "exact_absolute_error": {
+          "avg": 0,
+          "count": 0,
+          "max": 0,
+          "min": 0,
+          "sum": 0,
+          "variance_population": 0,
+          "variance_sample": 2.9802322387695312e-8
+        },
+        "quantile_measurements": [
+          {
+            "rank": 0,
+            "estimate": 3,
+            "exact_nearest_rank": 3,
+            "rank_low": 0,
+            "rank_high": 0.0026041666666666665,
+            "normalized_rank_error_observed": 0,
+            "absolute_value_error": 0,
+            "relative_value_error": 0
+          },
+          {
+            "rank": 0.5,
+            "estimate": 526,
+            "exact_nearest_rank": 527,
+            "rank_low": 0.4947916666666667,
+            "rank_high": 0.4973958333333333,
+            "normalized_rank_error_observed": 0.002604166666666685,
+            "absolute_value_error": 1,
+            "relative_value_error": 0.0018975332068311196
+          },
+          {
+            "rank": 0.9,
+            "estimate": 939,
+            "exact_nearest_rank": 942,
+            "rank_low": 0.8958333333333334,
+            "rank_high": 0.8984375,
+            "normalized_rank_error_observed": 0.0015625000000000222,
+            "absolute_value_error": 3,
+            "relative_value_error": 0.0031847133757961785
+          },
+          {
+            "rank": 0.95,
+            "estimate": 997,
+            "exact_nearest_rank": 997,
+            "rank_low": 0.9479166666666666,
+            "rank_high": 0.9505208333333334,
+            "normalized_rank_error_observed": 0,
+            "absolute_value_error": 0,
+            "relative_value_error": 0
+          },
+          {
+            "rank": 0.99,
+            "estimate": 76300,
+            "exact_nearest_rank": 76300,
+            "rank_low": 0.9895833333333334,
+            "rank_high": 0.9921875,
+            "normalized_rank_error_observed": 0,
+            "absolute_value_error": 0,
+            "relative_value_error": 0
+          },
+          {
+            "rank": 1,
+            "estimate": 95640,
+            "exact_nearest_rank": 95640,
+            "rank_low": 0.9973958333333334,
+            "rank_high": 1,
+            "normalized_rank_error_observed": 0,
+            "absolute_value_error": 0,
+            "relative_value_error": 0
+          }
+        ]
+      },
+      "single_bucket_identical_after_restart_copy": true,
+      "expired_only_availability": "not_applicable_no_expired_input",
+      "partial_bucket_refused": true
+    },
+    {
+      "name": "more_volume_same_groups_and_times",
+      "settings": {
+        "final_retain_days_zero_means_forever": 0,
+        "days": 1825,
+        "slots_per_day": 24,
+        "groups": 2,
+        "observations_per_slot_and_group": 32
+      },
+      "observations": 2803200,
+      "serialized_input_bytes": 207414097,
+      "input_sha256": "0dc2886e49ff093dc109157d560e87eed51ca7b80d459d3bb680d7a646b29866",
+      "snapshot_bytes": 15396864,
+      "input_to_snapshot_ratio": 13.471191081508547,
+      "live_before_snapshot": {
+        "main_bytes": 15405056,
+        "wal_bytes": 4247752,
+        "shm_bytes": 32768,
+        "other_database_directory_bytes": 0,
+        "total_bytes": 19685576
+      },
+      "closed_main_bytes": 15478784,
+      "peak_sampled_live_bytes": 19685576,
+      "peak_sampled_working_export_bytes": 50479304,
+      "reference_values_in_memory": 2803968,
+      "timings": {
+        "total_case_seconds": 57.618314513,
+        "engine_ingest_seconds": 9.947766545999993,
+        "engine_advance_seconds": 34.608436543999964,
+        "retained_query_milliseconds": 83.908985,
+        "snapshot_milliseconds": 37.367292
+      },
+      "status": {
+        "frontiers": [
+          {
+            "tier": 0,
+            "through_exclusive": "2024-12-29T12:34:00Z"
+          },
+          {
+            "tier": 1,
+            "through_exclusive": "2024-12-29T12:00:00Z"
+          },
+          {
+            "tier": 2,
+            "through_exclusive": "2024-12-23T00:00:00Z"
+          },
+          {
+            "tier": 3,
+            "through_exclusive": "2020-01-01T00:00:00Z"
+          }
+        ],
+        "accepted": 2803200,
+        "rejected_invalid": 0,
+        "rejected_late": 0,
+        "rejected_group_limit": 0,
+        "groups": 2,
+        "buckets": 3972,
+        "coverage_start": "2020-01-01T00:00:00Z",
+        "observed_through_inclusive": "2024-12-30T12:34:00Z"
+      },
+      "retained_query": {
+        "resolutions": [
+          {
+            "from": "2020-01-01T00:00:00Z",
+            "to": "2024-12-23T00:00:00Z",
+            "tier": 3,
+            "width_seconds": 86400
+          },
+          {
+            "from": "2024-12-23T00:00:00Z",
+            "to": "2024-12-29T12:00:00Z",
+            "tier": 2,
+            "width_seconds": 3600
+          },
+          {
+            "from": "2024-12-29T12:00:00Z",
+            "to": "2024-12-29T12:34:00Z",
+            "tier": 1,
+            "width_seconds": 60
+          },
+          {
+            "from": "2024-12-29T12:34:00Z",
+            "to": "2024-12-30T12:34:00Z",
+            "tier": 0,
+            "width_seconds": 1
+          }
+        ],
+        "requested": {
+          "from": "2020-01-01T00:00:00Z",
+          "to": "2024-12-30T12:34:00Z"
+        },
+        "covered": {
+          "from": "2020-01-01T00:00:00Z",
+          "to": "2024-12-30T12:34:00Z"
+        },
+        "missing": [],
+        "resolution_seconds": 86400,
+        "definition_version": 1,
+        "available_statistics": [
+          "count",
+          "sum",
+          "min",
+          "max",
+          "avg",
+          "variance_population",
+          "variance_sample",
+          "quantiles"
+        ],
+        "statistics": {
+          "avg": 2986.077696917808,
+          "count": 2803200,
+          "max": 99940,
+          "min": 1,
+          "sum": 8370573000,
+          "variance_population": 157637392.9020722,
+          "variance_sample": 157637449.1368928
+        },
+        "complete": true,
+        "buckets_merged": 3972,
+        "quantiles": [
+          {
+            "rank": 0,
+            "value": 1,
+            "approximate": false
+          },
+          {
+            "rank": 0.5,
+            "value": 525,
+            "approximate": true
+          },
+          {
+            "rank": 0.9,
+            "value": 945,
+            "approximate": true
+          },
+          {
+            "rank": 0.95,
+            "value": 4460,
+            "approximate": true
+          },
+          {
+            "rank": 0.99,
+            "value": 76300,
+            "approximate": true
+          },
+          {
+            "rank": 1,
+            "value": 99940,
+            "approximate": false
+          }
+        ],
+        "quantile_accuracy": {
+          "availability": "available",
+          "algorithm": "kll_float64",
+          "encoding_version": 1,
+          "k": 200,
+          "m": 8,
+          "normalized_rank_error": 0.013294757464848584,
+          "error_model": "empirical_99_percent_max_rank_error",
+          "retained_items": 620,
+          "estimation_mode": true
+        }
+      },
+      "retained_comparison": {
+        "reference_statistics": {
+          "avg": 2986.077696917808,
+          "count": 2803200,
+          "max": 99940,
+          "min": 1,
+          "sum": 8370573000,
+          "variance_population": 157637392.9020682,
+          "variance_sample": 157637449.13688883
+        },
+        "exact_absolute_error": {
+          "avg": 0,
+          "count": 0,
+          "max": 0,
+          "min": 0,
+          "sum": 0,
+          "variance_population": 0.000003993511199951172,
+          "variance_sample": 0.0000039637088775634766
+        },
+        "quantile_measurements": [
+          {
+            "rank": 0,
+            "estimate": 1,
+            "exact_nearest_rank": 1,
+            "rank_low": 0,
+            "rank_high": 0.001000285388127854,
+            "normalized_rank_error_observed": 0,
+            "absolute_value_error": 0,
+            "relative_value_error": 0
+          },
+          {
+            "rank": 0.5,
+            "estimate": 525,
+            "exact_nearest_rank": 527,
+            "rank_low": 0.4979990724885845,
+            "rank_high": 0.49899935787671235,
+            "normalized_rank_error_observed": 0.001000642123287654,
+            "absolute_value_error": 2,
+            "relative_value_error": 0.003795066413662239
+          },
+          {
+            "rank": 0.9,
+            "estimate": 945,
+            "exact_nearest_rank": 948,
+            "rank_low": 0.8969984303652968,
+            "rank_high": 0.8979987157534246,
+            "normalized_rank_error_observed": 0.002001284246575419,
+            "absolute_value_error": 3,
+            "relative_value_error": 0.0031645569620253164
+          },
+          {
+            "rank": 0.95,
+            "estimate": 4460,
+            "exact_nearest_rank": 999,
+            "rank_low": 0.951300656392694,
+            "rank_high": 0.951400542237443,
+            "normalized_rank_error_observed": 0.001300656392694055,
+            "absolute_value_error": 3461,
+            "relative_value_error": 3.4644644644644647
+          },
+          {
+            "rank": 0.99,
+            "estimate": 76300,
+            "exact_nearest_rank": 78600,
+            "rank_low": 0.9883979023972602,
+            "rank_high": 0.9884985017123288,
+            "normalized_rank_error_observed": 0.0015014982876712102,
+            "absolute_value_error": 2300,
+            "relative_value_error": 0.029262086513994912
+          },
+          {
+            "rank": 1,
+            "estimate": 99940,
+            "exact_nearest_rank": 99940,
+            "rank_low": 0.9998990439497717,
+            "rank_high": 1,
+            "normalized_rank_error_observed": 0,
+            "absolute_value_error": 0,
+            "relative_value_error": 0
+          }
+        ]
+      },
+      "copied_comparison": {
+        "reference_statistics": {
+          "avg": 2986.077696917808,
+          "count": 2803200,
+          "max": 99940,
+          "min": 1,
+          "sum": 8370573000,
+          "variance_population": 157637392.9020682,
+          "variance_sample": 157637449.13688883
+        },
+        "exact_absolute_error": {
+          "avg": 0,
+          "count": 0,
+          "max": 0,
+          "min": 0,
+          "sum": 0,
+          "variance_population": 0.000003993511199951172,
+          "variance_sample": 0.0000039637088775634766
+        },
+        "quantile_measurements": [
+          {
+            "rank": 0,
+            "estimate": 1,
+            "exact_nearest_rank": 1,
+            "rank_low": 0,
+            "rank_high": 0.001000285388127854,
+            "normalized_rank_error_observed": 0,
+            "absolute_value_error": 0,
+            "relative_value_error": 0
+          },
+          {
+            "rank": 0.5,
+            "estimate": 524,
+            "exact_nearest_rank": 527,
+            "rank_low": 0.49699914383561644,
+            "rank_high": 0.4979990724885845,
+            "normalized_rank_error_observed": 0.0020009275114155067,
+            "absolute_value_error": 3,
+            "relative_value_error": 0.0056925996204933585
+          },
+          {
+            "rank": 0.9,
+            "estimate": 948,
+            "exact_nearest_rank": 948,
+            "rank_low": 0.8999989297945206,
+            "rank_high": 0.9009992151826484,
+            "normalized_rank_error_observed": 0,
+            "absolute_value_error": 0,
+            "relative_value_error": 0
+          },
+          {
+            "rank": 0.95,
+            "estimate": 999,
+            "exact_nearest_rank": 999,
+            "rank_low": 0.9489993578767123,
+            "rank_high": 0.95,
+            "normalized_rank_error_observed": 0,
+            "absolute_value_error": 0,
+            "relative_value_error": 0
+          },
+          {
+            "rank": 0.99,
+            "estimate": 84120,
+            "exact_nearest_rank": 78600,
+            "rank_low": 0.9921992722602739,
+            "rank_high": 0.9922991581050228,
+            "normalized_rank_error_observed": 0.0021992722602739434,
+            "absolute_value_error": 5520,
+            "relative_value_error": 0.07022900763358779
+          },
+          {
+            "rank": 1,
+            "estimate": 99940,
+            "exact_nearest_rank": 99940,
+            "rank_low": 0.9998990439497717,
+            "rank_high": 1,
+            "normalized_rank_error_observed": 0,
+            "absolute_value_error": 0,
+            "relative_value_error": 0
+          }
+        ]
+      },
+      "single_bucket_comparison": {
+        "reference_statistics": {
+          "avg": 2830.8125,
+          "count": 768,
+          "max": 99460,
+          "min": 1,
+          "sum": 2174064,
+          "variance_population": 146889388.40234375,
+          "variance_sample": 147080899.99087355
+        },
+        "exact_absolute_error": {
+          "avg": 0,
+          "count": 0,
+          "max": 0,
+          "min": 0,
+          "sum": 0,
+          "variance_population": 2.9802322387695312e-8,
+          "variance_sample": 2.9802322387695312e-8
+        },
+        "quantile_measurements": [
+          {
+            "rank": 0,
+            "estimate": 1,
+            "exact_nearest_rank": 1,
+            "rank_low": 0,
+            "rank_high": 0.0013020833333333333,
+            "normalized_rank_error_observed": 0,
+            "absolute_value_error": 0,
+            "relative_value_error": 0
+          },
+          {
+            "rank": 0.5,
+            "estimate": 524,
+            "exact_nearest_rank": 526,
+            "rank_low": 0.49609375,
+            "rank_high": 0.4973958333333333,
+            "normalized_rank_error_observed": 0.002604166666666685,
+            "absolute_value_error": 2,
+            "relative_value_error": 0.0038022813688212928
+          },
+          {
+            "rank": 0.9,
+            "estimate": 942,
+            "exact_nearest_rank": 948,
+            "rank_low": 0.89453125,
+            "rank_high": 0.8958333333333334,
+            "normalized_rank_error_observed": 0.004166666666666652,
+            "absolute_value_error": 6,
+            "relative_value_error": 0.006329113924050633
+          },
+          {
+            "rank": 0.95,
+            "estimate": 996,
+            "exact_nearest_rank": 999,
+            "rank_low": 0.9453125,
+            "rank_high": 0.9466145833333334,
+            "normalized_rank_error_observed": 0.0033854166666665853,
+            "absolute_value_error": 3,
+            "relative_value_error": 0.003003003003003003
+          },
+          {
+            "rank": 0.99,
+            "estimate": 74720,
+            "exact_nearest_rank": 76300,
+            "rank_low": 0.98828125,
+            "rank_high": 0.9895833333333334,
+            "normalized_rank_error_observed": 0.0004166666666666208,
+            "absolute_value_error": 1580,
+            "relative_value_error": 0.02070773263433814
+          },
+          {
+            "rank": 1,
+            "estimate": 99460,
+            "exact_nearest_rank": 99460,
+            "rank_low": 0.9986979166666666,
+            "rank_high": 1,
+            "normalized_rank_error_observed": 0,
+            "absolute_value_error": 0,
+            "relative_value_error": 0
+          }
+        ]
+      },
+      "single_bucket_identical_after_restart_copy": true,
+      "expired_only_availability": "not_applicable_no_expired_input",
+      "partial_bucket_refused": true
+    },
+    {
+      "name": "more_groups_same_event_count_and_times",
+      "settings": {
+        "final_retain_days_zero_means_forever": 0,
+        "days": 1825,
+        "slots_per_day": 24,
+        "groups": 8,
+        "observations_per_slot_and_group": 4
+      },
+      "observations": 1401600,
+      "serialized_input_bytes": 103707074,
+      "input_sha256": "da6869121b8c1aa1bad22cd61d2e22a7783aa11be45b8eeb1a888fe555a06b5f",
+      "snapshot_bytes": 16310272,
+      "input_to_snapshot_ratio": 6.358390221818496,
+      "live_before_snapshot": {
+        "main_bytes": 23867392,
+        "wal_bytes": 4408432,
+        "shm_bytes": 32768,
+        "other_database_directory_bytes": 0,
+        "total_bytes": 28308592
+      },
+      "closed_main_bytes": 23965696,
+      "peak_sampled_live_bytes": 28308592,
+      "peak_sampled_working_export_bytes": 60929136,
+      "reference_values_in_memory": 1401696,
+      "timings": {
+        "total_case_seconds": 139.456294595,
+        "engine_ingest_seconds": 26.50191779500004,
+        "engine_advance_seconds": 106.04490800599997,
+        "retained_query_milliseconds": 214.441437,
+        "snapshot_milliseconds": 47.450377
+      },
+      "status": {
+        "frontiers": [
+          {
+            "tier": 0,
+            "through_exclusive": "2024-12-29T12:34:00Z"
+          },
+          {
+            "tier": 1,
+            "through_exclusive": "2024-12-29T12:00:00Z"
+          },
+          {
+            "tier": 2,
+            "through_exclusive": "2024-12-23T00:00:00Z"
+          },
+          {
+            "tier": 3,
+            "through_exclusive": "2020-01-01T00:00:00Z"
+          }
+        ],
+        "accepted": 1401600,
+        "rejected_invalid": 0,
+        "rejected_late": 0,
+        "rejected_group_limit": 0,
+        "groups": 8,
+        "buckets": 15888,
+        "coverage_start": "2020-01-01T00:00:00Z",
+        "observed_through_inclusive": "2024-12-30T12:34:00Z"
+      },
+      "retained_query": {
+        "resolutions": [
+          {
+            "from": "2020-01-01T00:00:00Z",
+            "to": "2024-12-23T00:00:00Z",
+            "tier": 3,
+            "width_seconds": 86400
+          },
+          {
+            "from": "2024-12-23T00:00:00Z",
+            "to": "2024-12-29T12:00:00Z",
+            "tier": 2,
+            "width_seconds": 3600
+          },
+          {
+            "from": "2024-12-29T12:00:00Z",
+            "to": "2024-12-29T12:34:00Z",
+            "tier": 1,
+            "width_seconds": 60
+          },
+          {
+            "from": "2024-12-29T12:34:00Z",
+            "to": "2024-12-30T12:34:00Z",
+            "tier": 0,
+            "width_seconds": 1
+          }
+        ],
+        "requested": {
+          "from": "2020-01-01T00:00:00Z",
+          "to": "2024-12-30T12:34:00Z"
+        },
+        "covered": {
+          "from": "2020-01-01T00:00:00Z",
+          "to": "2024-12-30T12:34:00Z"
+        },
+        "missing": [],
+        "resolution_seconds": 86400,
+        "definition_version": 1,
+        "available_statistics": [
+          "count",
+          "sum",
+          "min",
+          "max",
+          "avg",
+          "variance_population",
+          "variance_sample",
+          "quantiles"
+        ],
+        "statistics": {
+          "avg": 2985.63801369863,
+          "count": 1401600,
+          "max": 99940,
+          "min": 1,
+          "sum": 4184670240,
+          "variance_population": 157607647.78559336,
+          "variance_sample": 157607760.23405242
+        },
+        "complete": true,
+        "buckets_merged": 15888,
+        "quantiles": [
+          {
+            "rank": 0,
+            "value": 1,
+            "approximate": false
+          },
+          {
+            "rank": 0.5,
+            "value": 528,
+            "approximate": true
+          },
+          {
+            "rank": 0.9,
+            "value": 949,
+            "approximate": true
+          },
+          {
+            "rank": 0.95,
+            "value": 2700,
+            "approximate": true
+          },
+          {
+            "rank": 0.99,
+            "value": 80480,
+            "approximate": true
+          },
+          {
+            "rank": 1,
+            "value": 99940,
+            "approximate": false
+          }
+        ],
+        "quantile_accuracy": {
+          "availability": "available",
+          "algorithm": "kll_float64",
+          "encoding_version": 1,
+          "k": 200,
+          "m": 8,
+          "normalized_rank_error": 0.013294757464848584,
+          "error_model": "empirical_99_percent_max_rank_error",
+          "retained_items": 616,
+          "estimation_mode": true
+        }
+      },
+      "retained_comparison": {
+        "reference_statistics": {
+          "avg": 2985.63801369863,
+          "count": 1401600,
+          "max": 99940,
+          "min": 1,
+          "sum": 4184670240,
+          "variance_population": 157607647.7855755,
+          "variance_sample": 157607760.23403457
+        },
+        "exact_absolute_error": {
+          "avg": 0,
+          "count": 0,
+          "max": 0,
+          "min": 0,
+          "sum": 0,
+          "variance_population": 0.000017851591110229492,
+          "variance_sample": 0.000017851591110229492
+        },
+        "quantile_measurements": [
+          {
+            "rank": 0,
+            "estimate": 1,
+            "exact_nearest_rank": 1,
+            "rank_low": 0,
+            "rank_high": 0.0009995719178082193,
+            "normalized_rank_error_observed": 0,
+            "absolute_value_error": 0,
+            "relative_value_error": 0
+          },
+          {
+            "rank": 0.5,
+            "estimate": 528,
+            "exact_nearest_rank": 527,
+            "rank_low": 0.5009853025114155,
+            "rank_high": 0.5019841609589041,
+            "normalized_rank_error_observed": 0.0009853025114154867,
+            "absolute_value_error": 1,
+            "relative_value_error": 0.0018975332068311196
+          },
+          {
+            "rank": 0.9,
+            "estimate": 949,
+            "exact_nearest_rank": 948,
+            "rank_low": 0.9009974315068493,
+            "rank_high": 0.9019955764840183,
+            "normalized_rank_error_observed": 0.0009974315068492778,
+            "absolute_value_error": 1,
+            "relative_value_error": 0.0010548523206751054
+          },
+          {
+            "rank": 0.95,
+            "estimate": 2700,
+            "exact_nearest_rank": 1000,
+            "rank_low": 0.9506000285388128,
+            "rank_high": 0.9507006278538813,
+            "normalized_rank_error_observed": 0.0006000285388128024,
+            "absolute_value_error": 1700,
+            "relative_value_error": 1.7
+          },
+          {
+            "rank": 0.99,
+            "estimate": 80480,
+            "exact_nearest_rank": 78600,
+            "rank_low": 0.9907919520547945,
+            "rank_high": 0.9908918378995434,
+            "normalized_rank_error_observed": 0.0007919520547945424,
+            "absolute_value_error": 1880,
+            "relative_value_error": 0.02391857506361323
+          },
+          {
+            "rank": 1,
+            "estimate": 99940,
+            "exact_nearest_rank": 99940,
+            "rank_low": 0.9998979737442922,
+            "rank_high": 1,
+            "normalized_rank_error_observed": 0,
+            "absolute_value_error": 0,
+            "relative_value_error": 0
+          }
+        ]
+      },
+      "copied_comparison": {
+        "reference_statistics": {
+          "avg": 2985.63801369863,
+          "count": 1401600,
+          "max": 99940,
+          "min": 1,
+          "sum": 4184670240,
+          "variance_population": 157607647.7855755,
+          "variance_sample": 157607760.23403457
+        },
+        "exact_absolute_error": {
+          "avg": 0,
+          "count": 0,
+          "max": 0,
+          "min": 0,
+          "sum": 0,
+          "variance_population": 0.000017851591110229492,
+          "variance_sample": 0.000017851591110229492
+        },
+        "quantile_measurements": [
+          {
+            "rank": 0,
+            "estimate": 1,
+            "exact_nearest_rank": 1,
+            "rank_low": 0,
+            "rank_high": 0.0009995719178082193,
+            "normalized_rank_error_observed": 0,
+            "absolute_value_error": 0,
+            "relative_value_error": 0
+          },
+          {
+            "rank": 0.5,
+            "estimate": 527,
+            "exact_nearest_rank": 527,
+            "rank_low": 0.4999835901826484,
+            "rank_high": 0.5009853025114155,
+            "normalized_rank_error_observed": 0,
+            "absolute_value_error": 0,
+            "relative_value_error": 0
+          },
+          {
+            "rank": 0.9,
+            "estimate": 946,
+            "exact_nearest_rank": 948,
+            "rank_low": 0.897998002283105,
+            "rank_high": 0.8989954337899544,
+            "normalized_rank_error_observed": 0.001004566210045632,
+            "absolute_value_error": 2,
+            "relative_value_error": 0.002109704641350211
+          },
+          {
+            "rank": 0.95,
+            "estimate": 2940,
+            "exact_nearest_rank": 1000,
+            "rank_low": 0.9510002853881279,
+            "rank_high": 0.9511008847031963,
+            "normalized_rank_error_observed": 0.0010002853881279083,
+            "absolute_value_error": 1940,
+            "relative_value_error": 1.94
+          },
+          {
+            "rank": 0.99,
+            "estimate": 82180,
+            "exact_nearest_rank": 78600,
+            "rank_low": 0.9912920947488585,
+            "rank_high": 0.991390553652968,
+            "normalized_rank_error_observed": 0.0012920947488584966,
+            "absolute_value_error": 3580,
+            "relative_value_error": 0.0455470737913486
+          },
+          {
+            "rank": 1,
+            "estimate": 99940,
+            "exact_nearest_rank": 99940,
+            "rank_low": 0.9998979737442922,
+            "rank_high": 1,
+            "normalized_rank_error_observed": 0,
+            "absolute_value_error": 0,
+            "relative_value_error": 0
+          }
+        ]
+      },
+      "single_bucket_comparison": {
+        "reference_statistics": {
+          "avg": 2043.0833333333333,
+          "count": 96,
+          "max": 74720,
+          "min": 8,
+          "sum": 196136,
+          "variance_population": 78811006.49305555,
+          "variance_sample": 79640596.03508772
+        },
+        "exact_absolute_error": {
+          "avg": 0,
+          "count": 0,
+          "max": 0,
+          "min": 0,
+          "sum": 0,
+          "variance_population": 0,
+          "variance_sample": 0
+        },
+        "quantile_measurements": [
+          {
+            "rank": 0,
+            "estimate": 8,
+            "exact_nearest_rank": 8,
+            "rank_low": 0,
+            "rank_high": 0.010416666666666666,
+            "normalized_rank_error_observed": 0,
+            "absolute_value_error": 0,
+            "relative_value_error": 0
+          },
+          {
+            "rank": 0.5,
+            "estimate": 529,
+            "exact_nearest_rank": 529,
+            "rank_low": 0.4895833333333333,
+            "rank_high": 0.5,
+            "normalized_rank_error_observed": 0,
+            "absolute_value_error": 0,
+            "relative_value_error": 0
+          },
+          {
+            "rank": 0.9,
+            "estimate": 958,
+            "exact_nearest_rank": 958,
+            "rank_low": 0.8958333333333334,
+            "rank_high": 0.90625,
+            "normalized_rank_error_observed": 0,
+            "absolute_value_error": 0,
+            "relative_value_error": 0
+          },
+          {
+            "rank": 0.95,
+            "estimate": 1000,
+            "exact_nearest_rank": 1000,
+            "rank_low": 0.9479166666666666,
+            "rank_high": 0.9583333333333334,
+            "normalized_rank_error_observed": 0,
+            "absolute_value_error": 0,
+            "relative_value_error": 0
+          },
+          {
+            "rank": 0.99,
+            "estimate": 74720,
+            "exact_nearest_rank": 74720,
+            "rank_low": 0.9895833333333334,
+            "rank_high": 1,
+            "normalized_rank_error_observed": 0,
+            "absolute_value_error": 0,
+            "relative_value_error": 0
+          },
+          {
+            "rank": 1,
+            "estimate": 74720,
+            "exact_nearest_rank": 74720,
+            "rank_low": 0.9895833333333334,
+            "rank_high": 1,
+            "normalized_rank_error_observed": 0,
+            "absolute_value_error": 0,
+            "relative_value_error": 0
+          }
+        ]
+      },
+      "single_bucket_identical_after_restart_copy": true,
+      "expired_only_availability": "not_applicable_no_expired_input",
+      "partial_bucket_refused": true
+    }
+  ],
+  "measurement_scope": "Regular per-day observation grid across the entire simulated interval, not continuous per-second telemetry. Daily batch ingestion and explicit daily retention; final advance adds 12h34m of covered idle time. Final retention is explicitly reported per case; zero means forever. Input-to-snapshot ratios with finite expiry include deliberately expired input and must not be described as aggregation-only savings. Input bytes/hash are actual NDJSON written outside the engine directory. Snapshots include metadata/indexes. Apparent file sizes are sampled every 10ms and after original ingestion/advancement/export/copy/close operations: directory scans are non-atomic and may miss transients or combine file lengths from different instants, so maxima are approximate and not physical allocation or guaranteed disk requirements. Working/export includes live database, sidecars, snapshot and copied file; source/reference disk and memory and SQLite temp files outside that directory are excluded. Engine phase timings exclude generation/reference evaluation; total case includes them. Shared execution environment; these measurements do not predict production throughput. KLL points vary across merges/runs; one stored sketch is compared identically after restart/copy. Rank regression checks use four times the empirical model plus 1/N, not a deterministic 99% guarantee."
+}
