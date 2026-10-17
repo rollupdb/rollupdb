@@ -20,7 +20,7 @@ SQLite remains modernc.org/sqlite v1.60.1 with libc v1.77.1, one serialized conn
 
 ## Validation
 
-Local pure-Go tests, Linux race detection, vet, module verification and formatting checks pass. Windows amd64 and macOS arm64 pure-Go cross-builds pass. Native hosted CI status and the final verified commit/run are recorded in SESSION_LOG.md after completion.
+Local pure-Go tests, Linux race detection, vet, module verification and formatting checks pass. Windows amd64 and macOS arm64 pure-Go cross-builds pass. Native hosted CI passed Linux, macOS and Windows at code commit b78a9440e9cce003e3f0aef1a63a91763a9fb511: https://github.com/rollupdb/rollupdb/actions/runs/39036260475 . All platforms passed tests, vet, builds and the replay/snapshot example; Linux also passed race detection, formatting and module-tidy checks. The final verification-record commit changes documentation only and skips redundant CI.
 
 Tests compare direct state and unequal partition merges with an independent big.Rat reference; exercise cancellation-sensitive sum, large offsets/small variance, overflow, grace boundaries, out-of-order input, backward-clock restart, dimension collisions/limits, malformed JSON, unknown fields, batch rollback under an injected SQL failure, count-only visibility, empty/unavailable/partial coverage, half-open minute buckets, migration and aggregate snapshot/copy/reopen equality. Concurrent ingestion must not lose updates.
 
