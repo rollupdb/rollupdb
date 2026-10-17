@@ -6,13 +6,13 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/rollupdb/rollupdb/transport"
 	"io"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/rollupdb/rollupdb"
+	"github.com/rollupdb/rollupdb/transport"
 )
 
 func main() {

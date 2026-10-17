@@ -16,33 +16,33 @@ the whole procedure and the checks to run afterwards.
 
 ## Where it stands (October 17, 2026)
 
-- Engine, CLI and local HTTP service are in place: exact statistics, KLL
-  quantiles, fixed UTC tiers with grace windows, `Advance` for promotion and
-  expiry, disjoint queries across resolutions, snapshot export, format
-  revision 4. Docs are in `docs/`.
-- Process-kill recovery tests cover acknowledged definitions and ingestion,
-  open uncommitted transactions, a finished promotion and an `Advance` killed
-  just before commit. They passed in CI before the last break.
-- License chosen: Apache 2.0 (LICENSE, NOTICE, THIRD_PARTY_LICENSES.md).
-- Release automation added: `test` and `release` workflows, `scripts/smoke.sh`,
-  `scripts/third-party-licenses.sh`. `Version` is 0.1.0 and no tag exists, so
-  the first green push to main publishes RollupDB v0.1.0.
-- Fixed: `retention_cancel_commit_test.go` lost its `time` import, which broke
-  compilation on every CI platform.
+- **v0.1.0 is out** (Apache 2.0), published by the release workflow from
+  commit 9b7af47 with five binaries and SHA256SUMS. Checked: the Linux
+  archive matches its checksum, prints `rollupdb 0.1.0` and passes
+  `scripts/smoke.sh`.
+- Engine, CLI and local HTTP service: exact statistics, KLL quantiles, fixed
+  UTC tiers with grace windows, `Advance` for promotion and expiry, disjoint
+  queries across resolutions, snapshot export, format revision 4.
+- CI (`test`) passes on Linux, macOS and Windows, including the process-kill
+  recovery tests. Failing test lines show up as check-run annotations.
+- An independent review found no blockers. Its doc fixes are in. Two limits
+  are written up in `docs/RELEASE_CANDIDATE.md` rather than fixed: a
+  far-future clock reading is kept as the watermark for good, and large
+  HTTP snapshots can hit the request and write timeouts.
 
 ## Next, agreed
 
-1. Get the pending commits onto main (needs Claude push access to the
-   rollupdb org), then watch `test` and `release` and check v0.1.0 as
-   RELEASING.md describes.
-2. Record test results into `test/results` with a script, and take every
+1. Record test results into `test/results` with a script, and take every
    number used on the site from there.
-3. Build the site at photozeitgeist/rollupdb.com (the owner creates the repo)
-   with the standard Hugo Launch template, unchanged: about, contact
-   (info@rollupdb.com), quick start, download and reference pages; posts for
-   the launch, a plain-language explainer, how it was tested and the name.
+2. Build the site at photozeitgeist/rollupdb.com (the owner creates the repo
+   and grants access) with the standard Hugo Launch template, unchanged:
+   about, contact (info@rollupdb.com), quick start, download and reference
+   pages; posts for the launch, a plain-language explainer, how it was
+   tested and the name.
 
-Feature work after 0.1.0 is not decided yet. Agree it with the owner first.
+Not decided yet, ask the owner first: fixing the two limits above (refuse a
+clock reading too far ahead of the watermark; give `/v1/snapshot` its own
+deadlines), and any feature work after 0.1.
 
 ## Working here
 

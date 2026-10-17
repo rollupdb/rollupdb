@@ -1,6 +1,6 @@
 # Quantile sketches and measured accuracy
 
-Session 3 uses the generic float64 KLL implementation in Apache DataSketches Go v0.2.0. KLL is compact and mergeable and has an explicit normalized-rank error model. This is a distribution summary, not a list of already-computed p50/p95/p99 answers. Observations accepted by exact-state validation are added to both representations; rejected observations affect neither. Sketch state, exact state, counters and the watermark commit together.
+RollupDB uses the generic float64 KLL implementation in Apache DataSketches Go v0.2.0. KLL is compact and mergeable and has an explicit normalized-rank error model. This is a distribution summary, not a list of already-computed p50/p95/p99 answers. Observations accepted by exact-state validation are added to both representations; rejected observations affect neither. Sketch state, exact state, counters and the watermark commit together.
 
 New stream definitions may include the following immutable configuration:
 

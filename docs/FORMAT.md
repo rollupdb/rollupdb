@@ -1,6 +1,6 @@
 # File format, revision 4
 
-Status: pre-release. Session 4 stores metadata, immutable initial stream definitions, exact aggregate buckets, optional KLL distribution state, dimension groups, ingestion runtime state and retention frontiers. It does not store raw observations.
+Status: format revision 4, as shipped in RollupDB 0.1. It stores metadata, immutable initial stream definitions, exact aggregate buckets, optional KLL distribution state, dimension groups, ingestion runtime state and retention frontiers. It does not store raw observations.
 
 The SQLite application_id is 0x524c4442 (ASCII RLDB) and user_version is 4. Schema revision and executable release are independent. Open checks identity and version and refuses unknown or legacy versions without migration. Migrate explicitly upgrades revision 1, 2 or 3 to 4, retaining identity, definitions and any existing exact state, times and counters. It executes the whole DDL chain and version change in one transaction; a failed upgrade leaves the source revision intact. Take a closed-file backup or a snapshot from the compatible old binary before upgrading.
 

@@ -1,6 +1,6 @@
 # Streaming imports and local HTTP
 
-Session 5 adds adapters over the existing embedded engine. There is no format change: databases remain revision 4 with immutable initial stream definitions. Both adapters use the same engine validation, finest-tier grace, counters, quantile settings, explicit retention and commit semantics. They do not create a raw-event store or deduplicate retries.
+The CLI streaming input and the HTTP service are adapters over the embedded engine. There is no format change: databases remain revision 4 with immutable initial stream definitions. Both adapters use the same engine validation, finest-tier grace, counters, quantile settings, explicit retention and commit semantics. They do not create a raw-event store or deduplicate retries.
 
 ## NDJSON command
 

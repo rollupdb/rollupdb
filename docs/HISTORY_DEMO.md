@@ -26,7 +26,7 @@ A sampler runs every 10ms and explicitly samples after original ingestion, advan
 
 Deleting old rows can leave the live main file larger than its compact snapshot. The snapshot is the portable retained representation; the report keeps both sizes visible. Storage does not depend only on total input volume: group count, bucket count, KLL mode/settings, data distribution, metadata, indexes and retention all matter. Approximate values and sometimes sizes can vary between KLL runs. The recorded result is docs/history-session-5.json; use its exact settings and scope when describing it.
 
-## Recorded Session 5 result
+## Recorded result
 
 The recorded Linux amd64 run used Go 1.27.2, nine reported logical CPUs and an Intel Xeon Platinum 8370C at 2.80 GHz in the shared execution environment. All five years of declared statistics remained available, every main query was complete and covered all four resolution tiers, and all 5,606,400 accepted observations agreed with the external reference across the three cases.
 
