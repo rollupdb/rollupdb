@@ -29,9 +29,20 @@ jobs:
       - name: Verify modules
         run: go mod verify
       - name: Test without CGo
+        shell: bash
         env:
           CGO_ENABLED: '0'
-        run: go test ./...
+        run: |
+          set -o pipefail
+          go test ./... 2>&1 | tee test-output.txt
+      - name: Report test failures as annotations
+        # Job logs aren't always downloadable from where the repo is worked
+        # on; annotations are. Up to ten lines show per step.
+        if: failure()
+        shell: bash
+        run: |
+          grep -E -- '--- FAIL|^FAIL|panic:|_test\.go:[0-9]+:' test-output.txt | head -n 10 |
+            while IFS= read -r line; do echo "::error title=go test::$line"; done || true
       - name: Repeat process-kill recovery tests
         if: runner.os == 'Linux'
         env:

@@ -4,3 +4,4 @@
 *.rollupdb-shm
 *.rollupdb-journal
 /coverage.out
+test-output.txt
