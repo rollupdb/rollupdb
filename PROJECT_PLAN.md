@@ -1,6 +1,6 @@
 RollupDB Project Plan
 
-Status: planning complete; implementation has not started.
+Status: Session 1 foundation implemented; see RESUME.md for checkpoint and validation status.
 Created: October 17, 2026.
 Code repository: https://github.com/rollupdb/rollupdb
 Future website: https://rollupdb.com
@@ -84,5 +84,5 @@ rollupdb.com will explain the product, show installation and a measured example,
 
 Resume
 
-Current state: repository inspected and found empty; this plan is the initial project document. No implementation, release or website has been created.
-Next action on an implementation command: inspect the current repository and any AGENTS.md instructions, then begin Session 1. Create RESUME.md during that session and update it before pausing.
+Current state: Session 1 adds the Go storage foundation, stream-definition persistence, snapshot export, correctness contracts and CI. No observation ingestion, release or website has been created. See RESUME.md for the current checkpoint.
+Next action on an implementation command: inspect the current repository and any AGENTS.md instructions, read RESUME.md, then begin Session 2.

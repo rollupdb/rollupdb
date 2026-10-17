@@ -1,0 +1,6 @@
+/bin/
+*.rollupdb
+*.rollupdb-wal
+*.rollupdb-shm
+*.rollupdb-journal
+/coverage.out

@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Verify modules
+        run: go mod verify
+      - name: Test without CGo
+        env:
+          CGO_ENABLED: '0'
+        run: go test ./...
+      - name: Vet
+        run: go vet ./...
+      - name: Build without CGo
+        env:
+          CGO_ENABLED: '0'
+        run: go build ./cmd/rollupdb
+      - name: Race detector
+        if: runner.os == 'Linux'
+        run: go test -race ./...
+      - name: Check Go formatting
+        if: runner.os == 'Linux'
+        shell: bash
+        run: test -z "$(gofmt -l .)"
+      - name: Check module manifests are tidy
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum

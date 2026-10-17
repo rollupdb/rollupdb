@@ -1,0 +1,15 @@
+# File format, revision 1
+
+Status: pre-release and subject to explicit migrations. Session 1 stores metadata and initial stream definitions, not observations or bucket state.
+
+The file is a SQLite database with application_id 0x524c4442 (ASCII RLDB) and user_version 1. The schema revision is independent of the executable release. `Open` checks both fields and required metadata, rejecting unknown versions without automatic migration. Future schema changes must introduce a version and migration tests before opening older files for writes. Never silently reinterpret a sketch payload after a binary upgrade.
+
+`store_meta` is a STRICT table with one row identified by singleton=1. Its file_id is 32 lowercase hex characters generated from sixteen random bytes. created_at is UTC RFC3339 with optional nanosecond precision. Successful snapshots preserve both fields. There is no per-instance locking identity in this value.
+
+`stream_definitions` is a STRICT table keyed by (name, version). It stores effective_at and a JSON definition containing name, version, effective_at, dimensions, statistics, max_groups and tiers. The JSON must be syntactically valid. Application validation applies the contract in docs/CONTRACT.md. Effective timestamps are normalized to UTC on write. Session 1 exposes only new version-1 definitions; direct SQL mutation is unsupported. Duplicate stream creation returns ErrStreamExists, rather than replacing configuration.
+
+Tiers encode width_seconds, retain_seconds and grace_seconds as integers, not Go duration nanoseconds. There is no implicit default retention or grace. A zero retain_seconds is explicitly infinite on the final tier; it never means zero-length retention. Dimensions and statistics are ordered arrays; dimension order will define canonical tuple encoding. An empty dimension list is permitted. The current serialized validator accepts exact-statistic names only. Percentile configuration will be introduced together with its implementation and format migration if necessary.
+
+Future bucket storage must carry stream/definition identity, dimension-group identity, tier, bucket start and interval width, exact statistical state, and sketch state or a reference to an immutable sketch definition. Sketch state needs algorithm, encoding revision and parameters; unknown payloads must be rejected. Future scheduler storage must record durable time watermarks and promotion frontiers. Future availability metadata must survive long enough to distinguish empty coverage, expiry and definition gaps. These are requirements, not tables already present in revision 1.
+
+WAL and shared-memory sidecars are operational state, not additional files the user must manage as part of a completed snapshot. `VACUUM INTO` exports a compact consistent main database file. Do not independently remove live journal files. The main file may retain reusable free pages after future deletion; a snapshot compacts them. Size reports must distinguish live main-file size, live sidecar bytes, exported size and peak export disk usage.

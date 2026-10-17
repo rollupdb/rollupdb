@@ -1,0 +1,14 @@
+{
+  "name": "api_requests",
+  "version": 1,
+  "effective_at": "2026-10-17T00:00:00Z",
+  "dimensions": ["service", "status_class"],
+  "statistics": ["count", "sum", "min", "max", "avg", "variance_population", "variance_sample"],
+  "max_groups": 1000,
+  "tiers": [
+    {"width_seconds": 1, "retain_seconds": 3600, "grace_seconds": 120},
+    {"width_seconds": 60, "retain_seconds": 604800, "grace_seconds": 120},
+    {"width_seconds": 3600, "retain_seconds": 31536000, "grace_seconds": 120},
+    {"width_seconds": 86400, "retain_seconds": 157680000, "grace_seconds": 120}
+  ]
+}
