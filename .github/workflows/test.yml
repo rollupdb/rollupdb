@@ -1,7 +1,12 @@
-name: CI
+name: test
+
+# Runs on every push to main and on pull requests. A green run on main starts
+# the release workflow (release.yml), which listens for a workflow named
+# "test": keep this name.
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 permissions:
@@ -54,6 +59,12 @@ jobs:
         env:
           CGO_ENABLED: '0'
         run: go build ./cmd/rollupdb
+      - name: Smoke test the built binary
+        if: runner.os != 'Windows'
+        run: sh scripts/smoke.sh ./rollupdb
+      - name: Third-party license texts are all found
+        if: runner.os == 'Linux'
+        run: bash scripts/third-party-licenses.sh > /dev/null
       - name: Race detector
         if: runner.os == 'Linux'
         run: go test -race ./...

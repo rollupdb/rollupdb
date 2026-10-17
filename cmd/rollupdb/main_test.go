@@ -281,3 +281,15 @@ func (s *signaledInput) Read(p []byte) (int, error) {
 	return s.reader.Read(p)
 }
 func (s *signaledInput) Close() error { return s.reader.Close() }
+
+func TestCLIVersion(t *testing.T) {
+	for _, arg := range []string{"version", "--version"} {
+		var out bytes.Buffer
+		if err := run(context.Background(), []string{arg}, &out); err != nil {
+			t.Fatalf("%s: %v", arg, err)
+		}
+		if got, want := strings.TrimSpace(out.String()), "rollupdb "+rollupdb.Version; got != want {
+			t.Fatalf("%s printed %q, want %q", arg, got, want)
+		}
+	}
+}

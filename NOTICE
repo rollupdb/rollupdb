@@ -1,12 +1,20 @@
-Copyright (c) 2026 RollupDB contributors.
-All rights reserved for original RollupDB code pending license selection.
+RollupDB
+Copyright rollupdb.com 2026
 
-This prototype has no selected distribution license. Dependency components
-retain their respective licenses. No public release or binary distribution
-is authorized by this notice; choose the project license and include required
-dependency notices before preparing the first public release.
+This product includes software developed at rollupdb.com (https://rollupdb.com).
 
 The compactCapacity function in kll_format.go is adapted from Apache
-DataSketches Go v0.2.0 under the Apache License, Version 2.0. Its license and
-original notice are retained in third_party/datasketches/. This dependency
-license does not select the license for original RollupDB code.
+DataSketches Go v0.2.0, also under the Apache License, Version 2.0. Its
+license and notice are in third_party/datasketches/. That notice reads:
+
+  Apache DataSketches Go
+  Copyright 2023-2026 The Apache Software Foundation
+
+  This product includes software developed at
+  The Apache Software Foundation (http://www.apache.org/).
+
+The rollupdb command and its ready-built binaries also contain the Go
+modules listed in THIRD_PARTY_LICENSES.md, among them modernc.org/sqlite
+(a translation of SQLite, which is in the public domain) and the Go runtime
+and standard library. Their licenses are listed there, and their full texts
+ship in every release archive.

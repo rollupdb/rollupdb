@@ -29,9 +29,13 @@ func run(ctx context.Context, args []string, out io.Writer) (err error) {
 }
 
 func runWithInput(ctx context.Context, args []string, input io.Reader, out io.Writer) (err error) {
-	const usage = "Usage: rollupdb init FILE | migrate FILE | inspect FILE | snapshot FILE DEST | create-stream FILE DEFINITION.json | stream FILE NAME | stats FILE NAME | advance FILE NAME | ingest FILE BATCH.json | query FILE QUERY.json | ingest-ndjson FILE STREAM INPUT [--batch-size N] | serve FILE [--listen 127.0.0.1:7070]"
+	const usage = "Usage: rollupdb version | init FILE | migrate FILE | inspect FILE | snapshot FILE DEST | create-stream FILE DEFINITION.json | stream FILE NAME | stats FILE NAME | advance FILE NAME | ingest FILE BATCH.json | query FILE QUERY.json | ingest-ndjson FILE STREAM INPUT [--batch-size N] | serve FILE [--listen 127.0.0.1:7070]"
+	if len(args) == 1 && (args[0] == "version" || args[0] == "--version") {
+		_, err := fmt.Fprintln(out, "rollupdb "+rollupdb.Version)
+		return err
+	}
 	if len(args) == 1 && (args[0] == "help" || args[0] == "--help" || args[0] == "-h") {
-		_, err := fmt.Fprintln(out, "RollupDB prototype\n"+usage+"\nExact aggregation and optional KLL quantiles are available. Run advance explicitly to promote and expire retained buckets.")
+		_, err := fmt.Fprintln(out, "RollupDB "+rollupdb.Version+"\n"+usage+"\nExact aggregation and optional KLL quantiles are available. Run advance explicitly to promote and expire retained buckets.")
 		return err
 	}
 	if len(args) < 2 {

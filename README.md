@@ -2,13 +2,13 @@
 
 Keep years of useful statistics in one portable database file.
 
-RollupDB is a new aggregate-database prototype. Its intended purpose is to ingest numeric observations, preserve declared mergeable statistics and progressively replace fine time buckets with coarse ones. Think of RRDtool rebuilt around statistical sketches and declared dimensions. This is a description of direction, not RRDtool file or API compatibility.
+RollupDB is a small aggregate database. It ingests numeric observations, keeps the mergeable statistics you declare and progressively replaces fine time buckets with coarse ones. Think of RRDtool rebuilt around statistical sketches and declared dimensions. This is a description of direction, not RRDtool file or API compatibility.
 
-Session 5 adds bounded streaming NDJSON ingestion, a loopback HTTP service and a measured multi-year replay to transactional rollups and expiry across fixed UTC tiers. It merges exact statistical state and optional KLL distributions, persists completion frontiers, and queries a disjoint set of retained resolutions. Counts are checked integers; sum, average and variance use floating-point arithmetic with documented numerical limits. Retention runs when the caller invokes `Advance` or the `advance` command. Reads and ingestion do not run a background scheduler. Size and accuracy are measured together on scoped fixtures.
+It offers bounded streaming NDJSON ingestion, a loopback HTTP service, transactional rollups and expiry across fixed UTC tiers, and a measured multi-year replay. It merges exact statistical state and optional KLL distributions, persists completion frontiers, and queries a disjoint set of retained resolutions. Counts are checked integers; sum, average and variance use floating-point arithmetic with documented numerical limits. Retention runs when the caller invokes `Advance` or the `advance` command. Reads and ingestion do not run a background scheduler. Size and accuracy are measured together on scoped fixtures.
 
 The engine is a Go library with command-line and local HTTP interfaces. SQLite through the pure-Go modernc.org/sqlite driver provides transactions and snapshot export without CGo or a separately installed SQLite server. Apache DataSketches Go supplies KLL compaction and merging. Dependencies are pinned in go.mod and go.sum. The initial target matrix is Linux amd64, macOS arm64 and Windows amd64; native CI must pass before a platform is considered validated.
 
-## Try the prototype
+## Try it
 
 Use the Go version declared in `go.mod`. From a checkout:
 
@@ -49,7 +49,7 @@ The snapshot destination is visible while it is being written. Use it only after
 
 ## Design and development
 
-The [architecture](docs/ARCHITECTURE.md) explains the boundaries and storage decision. The [correctness contract](docs/CONTRACT.md) defines event time, grace windows, rollup ownership, statistical state and historical availability. The [format notes](docs/FORMAT.md) distinguish the implemented schema from future bucket/sketch storage. The [project plan](PROJECT_PLAN.md) describes the six work sessions, and [RESUME.md](RESUME.md) records the next concrete task.
+The [architecture](docs/ARCHITECTURE.md) explains the boundaries and storage decision. The [correctness contract](docs/CONTRACT.md) defines event time, grace windows, rollup ownership, statistical state and historical availability. The [format notes](docs/FORMAT.md) distinguish the implemented schema from future bucket/sketch storage. [RELEASING.md](RELEASING.md) explains how releases go out, and [scope and limitations](docs/RELEASE_CANDIDATE.md) lists what 0.1 does not do.
 
 ```sh
 CGO_ENABLED=0 go test ./...
@@ -57,4 +57,8 @@ go test -race ./...
 go vet ./...
 ```
 
-There is no SQL interface, background scheduler or public release yet. A future website is planned at rollupdb.com; its repository and domain connection are separate work. The project's license has not been selected. Original RollupDB code is all rights reserved pending that decision; see [NOTICE](NOTICE) and [dependency notes](docs/DEPENDENCIES.md).
+There is no SQL interface or background scheduler yet.
+
+## License
+
+RollupDB is licensed under the [Apache License 2.0](LICENSE). See [NOTICE](NOTICE), [third-party licenses](THIRD_PARTY_LICENSES.md) and the [dependency notes](docs/DEPENDENCIES.md).
