@@ -16,7 +16,11 @@ type TierFrontier struct {
 	Through time.Time `json:"through_exclusive"`
 }
 
-// advanceBeforeCommitKey is an internal test seam for interrupting an open\n// retention transaction. Production callers never supply this context key.\ntype advanceBeforeCommitKey struct{}\n\ntype AdvanceResult struct {
+// advanceBeforeCommitKey is an internal test seam for interrupting an open
+// retention transaction. Production callers never supply this context key.
+type advanceBeforeCommitKey struct{}
+
+type AdvanceResult struct {
 	ObservedThrough time.Time      `json:"observed_through_inclusive"`
 	Frontiers       []TierFrontier `json:"frontiers"`
 	SourceBuckets   int64          `json:"source_buckets_removed"`
@@ -185,7 +189,12 @@ func (db *DB) Advance(ctx context.Context, name string) (AdvanceResult, error) {
 		return AdvanceResult{}, err
 	}
 	r.Frontiers = publicFrontiers(f)
-	// Tests can pause the owner after every retention write but before Commit.\n	// The callback must not use this DB handle (its mutex is held).\n	if hook, ok := ctx.Value(advanceBeforeCommitKey{}).(func()); ok {\n		hook()\n	}\n	if err = tx.Commit(); err != nil {
+	// Tests can pause the owner after every retention write but before Commit.
+	// The callback must not use this DB handle (its mutex is held).
+	if hook, ok := ctx.Value(advanceBeforeCommitKey{}).(func()); ok {
+		hook()
+	}
+	if err = tx.Commit(); err != nil {
 		return AdvanceResult{}, err
 	}
 	return r, nil
