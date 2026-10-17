@@ -123,7 +123,7 @@ func TestKilledOwnerAfterAdvanceKeepsFrontiersAndSketches(t *testing.T) {
 	if err != nil || again.SourceBuckets != 0 || again.ParentBuckets != 0 || again.ExpiredBuckets != 0 {
 		t.Fatalf("replayed committed promotion: %+v %v", again, err)
 	}
-	if len(again.Frontiers) != 2 || !again.Frontiers[0].Through.Equal(from.Add(time.Minute)) {
+	if len(again.Frontiers) != 2 || !again.Frontiers[0].Through.Equal(from.Add(3*time.Minute)) {
 		t.Fatalf("lost committed frontier: %+v", again.Frontiers)
 	}
 }
