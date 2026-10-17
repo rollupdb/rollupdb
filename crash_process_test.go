@@ -28,7 +28,7 @@ func TestKilledOwnerKeepsAcknowledgedDefinition(t *testing.T) {
 		fmt.Fprintln(os.Stdout, "ACK")
 		// A deliberate unclean process exit is performed by the parent.
 		_ = db
-		select {}
+		time.Sleep(24 * time.Hour)
 	}
 	path := filepath.Join(t.TempDir(), "killed-owner.rollupdb")
 	cmd := exec.Command(os.Args[0], "-test.run=^TestKilledOwnerKeepsAcknowledgedDefinition$")
