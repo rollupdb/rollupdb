@@ -4,18 +4,18 @@
 
 ## Views
 
-Every stream is a view named after it, with one row per retained bucket per dimension group:
+Every stream is a view named after it, with one row per retained bucket per dimension group. A view never shadows one of the file's own tables, and SQLite reserves names starting with `sqlite_`, so a stream named like a table (such as `buckets` or `stream_definitions`) or starting with `sqlite_` gets a view named `stream_<name>` instead. SQLite names ignore case, so of two streams whose names differ only in case, the later one in sort order gets the prefix too:
 
 | Column | Meaning |
 |---|---|
 | `start`, `end` | The bucket's interval in UTC, as RFC 3339 text, so string comparison orders them |
 | `width_seconds`, `tier` | The bucket's width and its tier number |
-| one per dimension | Named after the dimension; `dim_` is added in front if the name clashes with a column here |
+| one per dimension | Named after the dimension; `dim_` is added in front, as often as needed, if the name clashes with another column |
 | `count`, `sum`, `min`, `max`, `mean` | The bucket's exact state |
 | `m2` | Sum of squared differences from the mean, for merging variance |
 | `sketch` | The bucket's KLL sketch, or NULL for exact-only streams and buckets from before a sketch was added |
 
-Retained buckets never overlap: a rollup removes the buckets it merges in the same transaction. So `sum(count)`, `sum(sum)`, `min(min)` and `max(max)` are correct over any set of rows, and the mean is `sum(sum) / sum(count)`. Averaging `mean` is not.
+Retained buckets never overlap: a rollup removes the buckets it merges in the same transaction, and ingestion never writes below the finest tier's frontier. So `sum(count)`, `sum(sum)`, `min(min)` and `max(max)` are correct over any set of rows, and the mean is `sum(sum) / sum(count)`. Averaging `mean` is not.
 
 ## Aggregates
 
@@ -23,7 +23,7 @@ Retained buckets never overlap: a rollup removes the buckets it merges in the sa
 |---|---|
 | `rollup_variance(count, mean, m2)` | Population variance of all readings in the rows |
 | `rollup_variance_sample(count, mean, m2)` | Sample variance |
-| `rollup_quantile(sketch, rank)` | The percentile at `rank` (0 to 1) of the merged sketches; NULL if any row has no sketch. The rank must be the same on every row |
+| `rollup_quantile(sketch, rank)` | The percentile at `rank` (0 to 1) of the merged sketches; NULL if any row has no sketch. The rank must be the same on every row. A sketch from anywhere else, a literal for instance, gets the same checks as a stored one and fails if it doesn't pass them |
 
 ```sql
 SELECT service,
@@ -46,4 +46,4 @@ The statement sees what's retained now. It doesn't report coverage, missing inte
 
 ## Read-Only
 
-Only one statement is accepted, and it must start with `SELECT`, `WITH` or `VALUES`; `PRAGMA`, `ATTACH`, `VACUUM` and anything after a second `;` are refused. The statement runs with the connection in SQLite's `query_only` mode inside a transaction that is always rolled back, so a `WITH ... DELETE` fails too. Refused or failing statements return `ErrSQL` (HTTP 400, code `sql`) and change nothing. The statement holds the database handle while it runs, like any other call.
+Only one statement is accepted, and it must start with `SELECT`, `WITH` or `VALUES`; `PRAGMA`, `ATTACH`, `VACUUM` and anything after a second `;` are refused. The statement runs with the connection in SQLite's `query_only` mode inside a transaction that is always rolled back, so a `WITH ... DELETE` fails too. Refused or failing statements return `ErrSQL` (HTTP 400, code `sql`) and change nothing. The statement holds the database handle while it runs, like any other call. A statement cut short by its deadline or a cancelled request returns that context error, and the connection leaves read-only mode however the statement ended.

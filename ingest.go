@@ -177,6 +177,14 @@ func (db *DB) Ingest(ctx context.Context, batch Batch) (BatchResult, error) {
 	if runtime.CoverageStart.Valid {
 		coverageStart = runtime.CoverageStart.Int64
 	}
+	// Tier 0 below its frontier is already rolled up or expired. A later
+	// version with a longer grace mustn't reopen it: a bucket written there
+	// would never be promoted and would overlap its parent.
+	frontiers, err := readFrontiers(ctx, tx, d)
+	if err != nil {
+		return BatchResult{}, err
+	}
+	closedBelow := frontiers[0]
 	var groupCount int
 	if err = tx.QueryRowContext(ctx, "SELECT count(*) FROM dimension_groups WHERE stream=? AND version=1", d.Name).Scan(&groupCount); err != nil {
 		return BatchResult{}, err
@@ -212,7 +220,7 @@ func (db *DB) Ingest(ctx context.Context, batch Batch) (BatchResult, error) {
 		start := eventNS / width * width
 		// Subtract instead of adding a long grace period to an event timestamp;
 		// a valid 100-year grace can otherwise overflow signed nanoseconds.
-		if watermark-(start+width) >= grace {
+		if watermark-(start+width) >= grace || start < closedBelow {
 			result.Outcomes[i] = Outcome{Status: "rejected_late"}
 			result.RejectedLate++
 			continue

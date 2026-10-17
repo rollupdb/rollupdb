@@ -2,7 +2,6 @@ package rollupdb
 
 import (
 	"context"
-	"crypto/sha256"
 	"database/sql"
 	"database/sql/driver"
 	"encoding/binary"
@@ -11,8 +10,6 @@ import (
 	"math"
 	"strings"
 
-	"github.com/apache/datasketches-go/common"
-	"github.com/apache/datasketches-go/kll"
 	"modernc.org/sqlite"
 )
 
@@ -64,28 +61,51 @@ func (db *DB) SQL(ctx context.Context, query string) (SQLResult, error) {
 	if db.closed {
 		return SQLResult{}, ErrClosed
 	}
-	tx, err := db.sql.BeginTx(ctx, nil)
+	// query_only belongs to the connection, not the transaction. Hold the
+	// connection directly so the flag can be cleared after the transaction
+	// ends however it ends, including when ctx is cancelled mid-query and
+	// database/sql rolls the transaction back on its own.
+	conn, err := db.sql.Conn(ctx)
 	if err != nil {
 		return SQLResult{}, err
 	}
-	defer tx.Rollback()
-	if err = createStreamViews(ctx, tx); err != nil {
+	defer func() {
+		if _, resetErr := conn.ExecContext(context.Background(), "PRAGMA query_only=OFF"); resetErr != nil {
+			// A connection that may still be read-only must not be reused.
+			_ = conn.Raw(func(any) error { return driver.ErrBadConn })
+		}
+		_ = conn.Close()
+	}()
+	tx, err := conn.BeginTx(ctx, nil)
+	if err != nil {
 		return SQLResult{}, err
 	}
-	if _, err = tx.ExecContext(ctx, "PRAGMA query_only=ON"); err != nil {
+	result, err := runReadOnly(ctx, tx, query)
+	_ = tx.Rollback()
+	return result, err
+}
+
+func runReadOnly(ctx context.Context, tx *sql.Tx, query string) (SQLResult, error) {
+	failed := func(err error) error {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return ctxErr // cancelled or timed out: not the statement's fault
+		}
+		return fmt.Errorf("%w: %v", ErrSQL, err)
+	}
+	if err := createStreamViews(ctx, tx); err != nil {
 		return SQLResult{}, err
 	}
-	// The flag belongs to the connection, not the transaction, so it must be
-	// cleared before the connection serves the next caller.
-	defer func() { _, _ = tx.ExecContext(context.Background(), "PRAGMA query_only=OFF") }()
+	if _, err := tx.ExecContext(ctx, "PRAGMA query_only=ON"); err != nil {
+		return SQLResult{}, err
+	}
 	rows, err := tx.QueryContext(ctx, query)
 	if err != nil {
-		return SQLResult{}, fmt.Errorf("%w: %v", ErrSQL, err)
+		return SQLResult{}, failed(err)
 	}
 	defer rows.Close()
 	columns, err := rows.Columns()
 	if err != nil {
-		return SQLResult{}, fmt.Errorf("%w: %v", ErrSQL, err)
+		return SQLResult{}, failed(err)
 	}
 	result := SQLResult{Columns: columns, Rows: [][]any{}}
 	for rows.Next() {
@@ -99,7 +119,7 @@ func (db *DB) SQL(ctx context.Context, query string) (SQLResult, error) {
 			pointers[i] = &values[i]
 		}
 		if err = rows.Scan(pointers...); err != nil {
-			return SQLResult{}, fmt.Errorf("%w: %v", ErrSQL, err)
+			return SQLResult{}, failed(err)
 		}
 		for i, v := range values {
 			if f, ok := v.(float64); ok && (math.IsNaN(f) || math.IsInf(f, 0)) {
@@ -109,7 +129,7 @@ func (db *DB) SQL(ctx context.Context, query string) (SQLResult, error) {
 		result.Rows = append(result.Rows, values)
 	}
 	if err = rows.Err(); err != nil {
-		return SQLResult{}, fmt.Errorf("%w: %v", ErrSQL, err)
+		return SQLResult{}, failed(err)
 	}
 	return result, nil
 }
@@ -193,11 +213,29 @@ func singleReadStatement(query string) error {
 	return refuse("only SELECT, WITH and VALUES statements are allowed")
 }
 
-var fixedViewColumns = map[string]bool{"start": true, "end": true, "width_seconds": true, "tier": true, "count": true, "sum": true, "min": true, "max": true, "mean": true, "m2": true, "sketch": true}
+var fixedViewColumns = []string{"start", "end", "width_seconds", "tier", "count", "sum", "min", "max", "mean", "m2", "sketch"}
 
+// createStreamViews reads every definition before creating any view, so no
+// view can shadow a table the engine reads, then creates one temp view per
+// stream; see streamViewNames.
 func createStreamViews(ctx context.Context, tx *sql.Tx) error {
-	rows, err := tx.QueryContext(ctx, "SELECT DISTINCT name FROM stream_definitions ORDER BY name")
+	tables := map[string]bool{}
+	rows, err := tx.QueryContext(ctx, "SELECT name FROM main.sqlite_schema")
 	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var name string
+		if err = rows.Scan(&name); err != nil {
+			rows.Close()
+			return err
+		}
+		tables[strings.ToLower(name)] = true
+	}
+	if err = errors.Join(rows.Err(), rows.Close()); err != nil {
+		return err
+	}
+	if rows, err = tx.QueryContext(ctx, "SELECT DISTINCT name FROM main.stream_definitions ORDER BY name"); err != nil {
 		return err
 	}
 	var names []string
@@ -212,35 +250,76 @@ func createStreamViews(ctx context.Context, tx *sql.Tx) error {
 	if err = errors.Join(rows.Err(), rows.Close()); err != nil {
 		return err
 	}
+	definitions := make([]Definition, 0, len(names))
 	for _, name := range names {
 		d, err := readDefinition(ctx, tx, name)
 		if err != nil {
 			return err
 		}
-		if _, err = tx.ExecContext(ctx, streamViewSQL(d)); err != nil {
-			return fmt.Errorf("stream view %q: %w", name, err)
+		definitions = append(definitions, d)
+	}
+	views := streamViewNames(definitions, tables)
+	for i, d := range definitions {
+		if _, err = tx.ExecContext(ctx, streamViewSQL(d, views[i])); err != nil {
+			return fmt.Errorf("stream view %q: %w", d.Name, err)
 		}
 	}
 	return nil
 }
 
+// streamViewNames gives each stream a view named after it when that name is
+// free. SQLite names are case-insensitive, a view mustn't shadow one of the
+// file's tables, and names starting with sqlite_ are reserved; a stream whose
+// name can't be used gets stream_<name>, with stream_ added until it's free.
+func streamViewNames(definitions []Definition, tables map[string]bool) []string {
+	claimed := map[string]bool{}
+	free := func(name string) bool {
+		lower := strings.ToLower(name)
+		return !tables[lower] && !claimed[lower] && !strings.HasPrefix(lower, "sqlite_")
+	}
+	views := make([]string, len(definitions))
+	for i, d := range definitions {
+		if free(d.Name) {
+			views[i] = d.Name
+			claimed[strings.ToLower(d.Name)] = true
+		}
+	}
+	for i, d := range definitions {
+		if views[i] != "" {
+			continue
+		}
+		view := "stream_" + d.Name
+		for !free(view) {
+			view = "stream_" + view
+		}
+		views[i] = view
+		claimed[strings.ToLower(view)] = true
+	}
+	return views
+}
+
 // streamViewSQL builds a stream's view. Names come from validated
 // definitions (identifier characters only), and are quoted as well.
-func streamViewSQL(d Definition) string {
+func streamViewSQL(d Definition, view string) string {
 	var width strings.Builder
 	width.WriteString("CASE tier")
 	for i, t := range d.Tiers {
 		fmt.Fprintf(&width, " WHEN %d THEN %d", i, t.WidthSeconds)
 	}
 	width.WriteString(" END")
+	used := map[string]bool{}
+	for _, column := range fixedViewColumns {
+		used[column] = true
+	}
 	var b strings.Builder
-	fmt.Fprintf(&b, `CREATE TEMP VIEW "%s" AS SELECT strftime('%%Y-%%m-%%dT%%H:%%M:%%SZ', start_ns/1000000000, 'unixepoch') AS "start", `, d.Name)
+	fmt.Fprintf(&b, `CREATE TEMP VIEW "%s" AS SELECT strftime('%%Y-%%m-%%dT%%H:%%M:%%SZ', start_ns/1000000000, 'unixepoch') AS "start", `, view)
 	fmt.Fprintf(&b, `strftime('%%Y-%%m-%%dT%%H:%%M:%%SZ', start_ns/1000000000 + %s, 'unixepoch') AS "end", %s AS "width_seconds", tier AS "tier", `, width.String(), width.String())
 	for i, dimension := range d.Dimensions {
 		column := dimension
-		if fixedViewColumns[strings.ToLower(column)] {
+		for used[strings.ToLower(column)] {
 			column = "dim_" + column
 		}
+		used[strings.ToLower(column)] = true
 		fmt.Fprintf(&b, `json_extract(tuple_key, '$[%d]') AS "%s", `, i, column)
 	}
 	fmt.Fprintf(&b, `n AS "count", sum + sum_comp AS "sum", min AS "min", max AS "max", mean AS "mean", m2 AS "m2", sketch AS "sketch" FROM main.buckets WHERE stream = '%s' AND version = 1`, d.Name)
@@ -370,32 +449,43 @@ func (a *quantileAggregate) WindowValue(*sqlite.FunctionContext) (driver.Value, 
 
 func (a *quantileAggregate) Final(*sqlite.FunctionContext) {}
 
-// decodeStoredSketch reads a sketch the engine wrote, taking the settings
-// from its envelope. The checksum covers the payload, which was validated
-// against its bucket's exact state when it was written.
-func decodeStoredSketch(encoded []byte) (_ *quantileSketch, err error) {
+// decodeStoredSketch reads a sketch passed to rollup_quantile, taking the
+// settings from its envelope. The bytes may come from anywhere (a SQL literal
+// as easily as a bucket), so they get the same layout checks as a bucket's
+// sketch, with the count and extremes the payload itself declares standing
+// in for the bucket's exact state.
+func decodeStoredSketch(encoded []byte) (*quantileSketch, error) {
 	if len(encoded) < sketchHeaderBytes+8 || len(encoded) > maxSketchBytes || string(encoded[:4]) != "RDKL" {
 		return nil, ErrSketchEncoding
 	}
 	config := SketchConfig{Algorithm: SketchAlgorithm, EncodingVersion: int(encoded[4]), K: binary.LittleEndian.Uint16(encoded[6:8]), M: encoded[8]}
-	if err = config.Validate(); err != nil {
-		return nil, err
-	}
-	payload := encoded[sketchHeaderBytes:]
-	if int(binary.LittleEndian.Uint32(encoded[12:16])) != len(payload) {
+	state, ok := declaredState(encoded[sketchHeaderBytes:])
+	if !ok {
 		return nil, ErrSketchEncoding
 	}
-	if sum := sha256.Sum256(payload); string(sum[:]) != string(encoded[16:48]) {
-		return nil, fmt.Errorf("%w: checksum", ErrSketchEncoding)
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("%w: decoder rejected payload", ErrSketchEncoding)
+	return decodeQuantileSketch(encoded, config, state)
+}
+
+// declaredState reads the count, minimum and maximum a KLL payload claims.
+// validateKLLPayload then checks the payload is consistent with them.
+func declaredState(p []byte) (exactState, bool) {
+	value := func(at int) float64 { return math.Float64frombits(binary.LittleEndian.Uint64(p[at:])) }
+	switch {
+	case len(p) == 16 && p[0] == 2 && p[1] == 2:
+		v := value(8)
+		return exactState{N: 1, Min: v, Max: v, Mean: v}, finite(v)
+	case len(p) >= 20 && p[0] == 5:
+		n := binary.LittleEndian.Uint64(p[8:16])
+		levels := int(p[18])
+		if n < 2 || n > math.MaxInt64 || levels < 1 || levels > 63 || len(p) < 20+4*levels+16 {
+			return exactState{}, false
 		}
-	}()
-	items, err := kll.NewKllItemsSketchFromSlice[float64](payload, common.ItemSketchDoubleComparator(false), common.ItemSketchDoubleSerDe{})
-	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrSketchEncoding, err)
+		base := 20 + 4*levels
+		minimum, maximum := value(base), value(base+8)
+		if !finite(minimum) || !finite(maximum) || minimum > maximum {
+			return exactState{}, false
+		}
+		return exactState{N: int64(n), Min: minimum, Max: maximum, Mean: minimum}, true
 	}
-	return &quantileSketch{config, items}, nil
+	return exactState{}, false
 }

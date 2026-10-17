@@ -229,3 +229,35 @@ func TestHTTPQuantileDefinitionAndNullRankRefusal(t *testing.T) {
 		t.Fatalf("null rank became zero: %d %s", w.Code, w.Body.String())
 	}
 }
+
+func TestHTTPAdvanceAllReportsResultsAlongsideFailures(t *testing.T) {
+	now := time.Date(2026, 10, 17, 12, 2, 0, 0, time.UTC)
+	db, err := rollupdb.Create(context.Background(), filepath.Join(t.TempDir(), "partial.rollupdb"), rollupdb.WithClock(func() time.Time { return now }), rollupdb.WithMaxClockStep(time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { db.Close() })
+	for _, name := range []string{"busy", "idle"} {
+		d := rollupdb.Definition{Name: name, Version: 1, EffectiveAt: now.Truncate(24 * time.Hour), Dimensions: []string{"service"}, Statistics: []string{"count"}, MaxGroups: 2, Tiers: []rollupdb.Tier{{WidthSeconds: 1, RetainSeconds: 120, GraceSeconds: 120}, {WidthSeconds: 60, RetainSeconds: 0, GraceSeconds: 120}}}
+		if err = db.CreateStream(context.Background(), d); err != nil {
+			t.Fatal(err)
+		}
+	}
+	h := NewHandler(db)
+	batch := rollupdb.Batch{Stream: "busy", Version: 1, Observations: []rollupdb.Observation{{Time: now.Add(-time.Second), Value: 1, Dimensions: map[string]string{"service": "web"}}}}
+	if w := request(t, h, "POST", "/v1/ingest", batch); w.Code != 200 {
+		t.Fatalf("ingest: %d %s", w.Code, w.Body.String())
+	}
+	now = now.Add(2 * time.Hour)
+	w := request(t, h, "POST", "/v1/advance", struct{}{})
+	var body struct {
+		Error   Problem                           `json:"error"`
+		Results map[string]rollupdb.AdvanceResult `json:"results"`
+	}
+	if err = json.Unmarshal(w.Body.Bytes(), &body); err != nil || w.Code != 409 || body.Error.Code != "clock_jump" || !strings.Contains(body.Error.Message, `"busy"`) {
+		t.Fatalf("advance all: %d %s %v", w.Code, w.Body.String(), err)
+	}
+	if _, ok := body.Results["idle"]; !ok {
+		t.Fatalf("results: %s", w.Body.String())
+	}
+}

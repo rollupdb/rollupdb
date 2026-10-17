@@ -32,14 +32,14 @@ func (db *DB) Streams(ctx context.Context) ([]string, error) {
 
 // AdvanceAll runs Advance for every stream, each in its own transaction, so
 // one stream's failure doesn't undo another's rollup. Streams that aren't
-// active yet are skipped. The results hold every stream that advanced; the
-// error joins the failures, each naming its stream.
+// active yet are skipped. The results hold every stream that advanced, even
+// when others failed; the error joins the failures, each naming its stream.
 func (db *DB) AdvanceAll(ctx context.Context) (map[string]AdvanceResult, error) {
+	results := map[string]AdvanceResult{}
 	names, err := db.Streams(ctx)
 	if err != nil {
-		return nil, err
+		return results, err
 	}
-	results := make(map[string]AdvanceResult, len(names))
 	var failures []error
 	for _, name := range names {
 		if err = ctx.Err(); err != nil {
@@ -77,8 +77,13 @@ func (db *DB) RunRetention(ctx context.Context, every time.Duration, report func
 	defer ticker.Stop()
 	for {
 		results, err := db.AdvanceAll(ctx)
-		if errors.Is(err, ErrClosed) || ctx.Err() != nil {
+		if errors.Is(err, ErrClosed) {
 			return nil
+		}
+		// Streams that advanced before ctx ended are still reported; the
+		// error from being cancelled is not.
+		if ctx.Err() != nil {
+			err = nil
 		}
 		if report != nil {
 			for name, r := range results {
@@ -89,6 +94,9 @@ func (db *DB) RunRetention(ctx context.Context, every time.Duration, report func
 			if err != nil {
 				report(RetentionReport{Err: err})
 			}
+		}
+		if ctx.Err() != nil {
+			return nil
 		}
 		select {
 		case <-ctx.Done():

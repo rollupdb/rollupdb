@@ -228,7 +228,20 @@ func (db *DB) UpdateStream(ctx context.Context, d Definition) error {
 	}
 	d.SketchSince = current.SketchSince
 	if current.Sketch == nil && d.Sketch != nil {
-		since := db.now().UTC()
+		// Every existing bucket starts at or before the later of the clock and
+		// the stored watermark (which is ahead after a clock step-back). The
+		// sketch covers buckets from the next tier-0 boundary after that, so
+		// no bucket that already exists is ever expected to have one.
+		runtime, err := readRuntime(ctx, tx, d.Name)
+		if err != nil {
+			return err
+		}
+		latest := db.now().UnixNano()
+		if runtime.Watermark.Valid && runtime.Watermark.Int64 > latest {
+			latest = runtime.Watermark.Int64
+		}
+		width := d.Tiers[0].WidthSeconds * int64(time.Second)
+		since := time.Unix(0, (latest/width+1)*width).UTC()
 		d.SketchSince = &since
 	}
 	encoded, err := json.Marshal(d)

@@ -1,6 +1,6 @@
 # Streaming imports and local HTTP
 
-The CLI streaming input and the HTTP service are adapters over the embedded engine. There is no format change: databases remain revision 4 with immutable initial stream definitions. Both adapters use the same engine validation, finest-tier grace, counters, quantile settings, explicit retention and commit semantics. They do not create a raw-event store or deduplicate retries.
+The CLI streaming input and the HTTP service are adapters over the embedded engine. There is no format change: databases remain revision 4; later stream versions add definition rows without changing the format. Both adapters use the same engine validation, finest-tier grace, counters, quantile settings, explicit retention and commit semantics. They do not create a raw-event store or deduplicate retries.
 
 ## NDJSON command
 
@@ -35,6 +35,15 @@ rollupdb stats latency.rollupdb api_latency
 
 The sample definition starts October 17, 2026 and rejects events before its effective date. This example uses the host clock, so do not leave the generated data waiting beyond its grace window. Historical replay belongs in an embedding with an explicit clock, as in the examples.
 
+## Stream versions and SQL commands
+
+```
+rollupdb update-stream FILE DEFINITION.json
+rollupdb sql FILE STATEMENT
+```
+
+`update-stream` adds the stream's next version (`"version"` one higher than the current one) through `UpdateStream`; a change a version can't make fails with `definition_change` and writes nothing. HTTP has the same as `POST /v1/streams/NAME/versions`, and `GET` on that path lists every version. `sql` runs one read-only statement and prints `{"columns", "rows", "truncated"}`; STATEMENT `-` reads it from stdin. HTTP has the same as `POST /v1/sql` with `{"sql": "..."}`. docs/SQL.md has the views, aggregates and limits.
+
 ## HTTP service
 
 ```
@@ -58,7 +67,7 @@ There is no authentication or TLS. This is a trusted local-process interface, no
 | POST | /v1/streams/NAME/advance | Empty object {}; explicit retention result |
 | GET | /v1/streams | {"streams": [names]} |
 | POST | /v1/sql | {"sql": "SELECT ..."}; columns and rows, see docs/SQL.md |
-| POST | /v1/advance | Empty object {}; results for every stream, by name |
+| POST | /v1/advance | Empty object {}; results for every stream, by name. If any stream fails, the status and `error` follow the first failure, the message names every failed stream, and `results` still lists the streams that rolled up |
 | GET | /v1/snapshot | Standalone snapshot download |
 
 JSON POST requests require Content-Type: application/json, uncompressed UTF-8 object bodies, no unknown fields and no trailing objects. Other media types and compressed requests are refused. Ingest bodies are limited to 8 MiB; definitions, queries and advancement bodies to 1 MiB. Engine batches still have at most 10000 observations. HTTP ingestion is a single atomic JSON batch; streaming NDJSON is currently a CLI interface. Query parameters are unsupported.

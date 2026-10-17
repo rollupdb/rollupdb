@@ -218,7 +218,7 @@ func promoteParent(ctx context.Context, tx *sql.Tx, d Definition, tier int, pare
 		if err != nil {
 			return err
 		}
-		rows, err := tx.QueryContext(ctx, `SELECT n,sum,sum_comp,min,max,mean,m2,sketch FROM buckets WHERE stream=? AND version=1 AND tuple_key=? AND tier=? AND start_ns>=? AND start_ns<? ORDER BY start_ns`, d.Name, key, tier, parent, parent+width)
+		rows, err := tx.QueryContext(ctx, `SELECT start_ns,n,sum,sum_comp,min,max,mean,m2,sketch FROM buckets WHERE stream=? AND version=1 AND tuple_key=? AND tier=? AND start_ns>=? AND start_ns<? ORDER BY start_ns`, d.Name, key, tier, parent, parent+width)
 		if err != nil {
 			return err
 		}
@@ -229,30 +229,42 @@ func promoteParent(ctx context.Context, tx *sql.Tx, d Definition, tier int, pare
 		// parent can't have a complete one either.
 		sketchMissing := false
 		for rows.Next() {
+			var childStart int64
 			var b exactState
 			var encoded []byte
-			if err = rows.Scan(&b.N, &b.Sum, &b.SumComp, &b.Min, &b.Max, &b.Mean, &b.M2, &encoded); err != nil {
+			if err = rows.Scan(&childStart, &b.N, &b.Sum, &b.SumComp, &b.Min, &b.Max, &b.Mean, &b.M2, &encoded); err != nil {
 				break
 			}
 			if b.N <= 0 || !b.valid() {
 				err = errors.New("rollupdb: invalid persisted statistical state")
 				break
 			}
-			if d.Sketch != nil && encoded == nil && d.sketchOptional(parent) {
-				sketchMissing = true
-			} else if d.Sketch != nil && !sketchMissing {
+			switch {
+			case d.Sketch == nil:
+				if encoded != nil {
+					err = ErrSketchEncoding
+				}
+			case encoded == nil:
+				// Only a child from before the sketch was added may lack one.
+				if !d.sketchOptional(childStart) {
+					err = fmt.Errorf("%w: bucket has no sketch", ErrSketchEncoding)
+					break
+				}
+				sketchMissing, sketch = true, nil
+			default:
+				// Decoding validates the child even when the parent can't
+				// keep a sketch because an older sibling has none.
 				var next *quantileSketch
-				next, err = decodeQuantileSketch(encoded, *d.Sketch, b)
-				if err != nil {
+				if next, err = decodeQuantileSketch(encoded, *d.Sketch, b); err != nil || sketchMissing {
 					break
 				}
 				if sketch == nil {
 					sketch = next
-				} else if err = sketch.merge(next); err != nil {
-					break
+				} else {
+					err = sketch.merge(next)
 				}
-			} else if encoded != nil {
-				err = ErrSketchEncoding
+			}
+			if err != nil {
 				break
 			}
 			state, err = state.merge(b)

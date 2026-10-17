@@ -44,33 +44,39 @@ func problem(w http.ResponseWriter, status int, code, message string) {
 	}{Problem{code, message}})
 }
 func engineError(w http.ResponseWriter, err error) {
+	status, p := classify(err)
+	problem(w, status, p.Code, p.Message)
+}
+
+// classify maps an engine error to an HTTP status and problem body.
+func classify(err error) (int, Problem) {
 	switch {
 	case errors.Is(err, rollupdb.ErrStreamNotFound):
-		problem(w, 404, "stream_not_found", "stream not found")
+		return 404, Problem{"stream_not_found", "stream not found"}
 	case errors.Is(err, rollupdb.ErrStreamExists):
-		problem(w, 409, "stream_exists", "stream already exists")
+		return 409, Problem{"stream_exists", "stream already exists"}
 	case errors.Is(err, rollupdb.ErrPartialBucket):
-		problem(w, 422, "partial_bucket", "requested range cuts a retained bucket")
+		return 422, Problem{"partial_bucket", "requested range cuts a retained bucket"}
 	case errors.Is(err, rollupdb.ErrInvalidRequest):
-		problem(w, 400, "invalid_request", "invalid engine request")
+		return 400, Problem{"invalid_request", "invalid engine request"}
 	case errors.Is(err, rollupdb.ErrStreamNotActive):
-		problem(w, 409, "stream_not_active", "stream is not active at the host clock")
+		return 409, Problem{"stream_not_active", "stream is not active at the host clock"}
 	case errors.Is(err, rollupdb.ErrSQL):
-		problem(w, 400, "sql", strings.TrimPrefix(err.Error(), rollupdb.ErrSQL.Error()+": "))
+		return 400, Problem{"sql", strings.TrimPrefix(err.Error(), rollupdb.ErrSQL.Error()+": ")}
 	case errors.Is(err, rollupdb.ErrDefinitionChange):
-		problem(w, 409, "definition_change", strings.TrimPrefix(err.Error(), rollupdb.ErrDefinitionChange.Error()+": "))
+		return 409, Problem{"definition_change", strings.TrimPrefix(err.Error(), rollupdb.ErrDefinitionChange.Error()+": ")}
 	case errors.Is(err, rollupdb.ErrClockJump):
-		problem(w, 409, "clock_jump", "host clock is too far ahead of the stream's stored watermark; nothing was written")
+		return 409, Problem{"clock_jump", "host clock is too far ahead of the stream's stored watermark; nothing was written"}
 	case errors.Is(err, rollupdb.ErrNumericOverflow):
-		problem(w, 422, "numeric_overflow", "combined numerical state is unrepresentable")
+		return 422, Problem{"numeric_overflow", "combined numerical state is unrepresentable"}
 	case errors.Is(err, context.DeadlineExceeded):
-		problem(w, 504, "deadline_exceeded", "request deadline exceeded; a missing acknowledgment does not prove rollback")
+		return 504, Problem{"deadline_exceeded", "request deadline exceeded; a missing acknowledgment does not prove rollback"}
 	case errors.Is(err, context.Canceled):
-		problem(w, 408, "canceled", "request canceled; a missing acknowledgment does not prove rollback")
+		return 408, Problem{"canceled", "request canceled; a missing acknowledgment does not prove rollback"}
 	case errors.Is(err, rollupdb.ErrClosed):
-		problem(w, 503, "closed", "database is closed")
+		return 503, Problem{"closed", "database is closed"}
 	default:
-		problem(w, 500, "engine_error", "engine operation failed; inspect the database before retrying an unacknowledged write")
+		return 500, Problem{"engine_error", "engine operation failed; inspect the database before retrying an unacknowledged write"}
 	}
 }
 
@@ -180,7 +186,14 @@ func NewHandler(db *rollupdb.DB) http.Handler {
 		}
 		results, err := db.AdvanceAll(r.Context())
 		if err != nil {
-			engineError(w, err)
+			// Name the streams that failed, and list the ones that did roll
+			// up: their rollups are committed.
+			status, p := classify(err)
+			p.Message += "; " + err.Error()
+			jsonResponse(w, status, struct {
+				Error   Problem                           `json:"error"`
+				Results map[string]rollupdb.AdvanceResult `json:"results"`
+			}{p, results})
 			return
 		}
 		jsonResponse(w, 200, results)
