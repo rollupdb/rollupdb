@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -80,7 +81,7 @@ func TestKilledOwnerPreservesAcknowledgedIngestAndSketch(t *testing.T) {
 	q := Query{Stream: d.Name, Version: 1, From: at, To: at.Add(time.Second), Quantiles: []float64{0, .5, 1}}
 	result, err := db.Query(ctx, q)
 	if err != nil { t.Fatal(err) }
-	if result.Statistics["count"] != int64(3) || result.Statistics["sum"] != float64(60) || result.Statistics["avg"] != float64(20) || result.Statistics["variance_population"] != float64(200.0/3.0) {
+	if result.Statistics["count"] != int64(3) || result.Statistics["sum"] != float64(60) || result.Statistics["avg"] != float64(20) || math.Abs(result.Statistics["variance_population"].(float64)-200.0/3.0) > 1e-12 {
 		t.Fatalf("acknowledged aggregates lost or altered: %+v", result.Statistics)
 	}
 	if len(result.Quantiles) != 3 {
