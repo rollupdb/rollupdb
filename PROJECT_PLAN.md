@@ -1,6 +1,6 @@
 RollupDB Project Plan
 
-Status: Session 4 transactional retention, persisted frontiers and mixed-resolution queries implemented; see RESUME.md for checkpoint and validation status.
+Status: Session 5 streaming NDJSON, local HTTP and multi-year measurements implemented; see RESUME.md for checkpoint and validation status.
 Created: October 17, 2026.
 Code repository: https://github.com/rollupdb/rollupdb
 Future website: https://rollupdb.com
@@ -84,5 +84,5 @@ rollupdb.com will explain the product, show installation and a measured example,
 
 Resume
 
-Current state: Session 4 adds explicit atomic promotion/expiry, persisted empty-inclusive frontiers, mixed-resolution queries, historical expiry availability, group reclamation, format revision 4 migration and rollback/restart tests. A small four-tier retention demo records size alongside accuracy. Releases and the website remain future work. See RESUME.md for the current checkpoint.
-Next action on an implementation command: inspect the current repository and any AGENTS.md instructions, read RESUME.md, then begin Session 5.
+Current state: Session 5 adds bounded streaming NDJSON with commit receipts and explicit partial progress, a loopback JSON HTTP service with limits/shutdown/snapshot download, and a deterministic multi-year volume/cardinality experiment with independent reference evaluation and scoped disk/timing measurements. Format revision 4 and engine semantics remain unchanged. Releases and the website remain future work. See RESUME.md for the current checkpoint.
+Next action on an implementation command: inspect the repository and any AGENTS.md instructions, read RESUME.md, then begin Session 6 hardening and release preparation. Confirm the project license before any public release.

@@ -41,6 +41,10 @@ jobs:
         env:
           CGO_ENABLED: '0'
         run: go run ./examples/retention -n 2000
+      - name: Continuous-history volume and cardinality smoke example
+        env:
+          CGO_ENABLED: '0'
+        run: go run ./examples/history -days 10 -slots 4 -repeats 4 -groups 1 -cardinality-factor 2 -retain-days 8
       - name: Build without CGo
         env:
           CGO_ENABLED: '0'

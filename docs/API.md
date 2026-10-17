@@ -1,6 +1,6 @@
-# Session 4 API and numerical behavior
+# Session 5 API and numerical behavior
 
-The embedded API is the engine. The CLI reads bounded UTF-8 JSON files and calls the same methods. There is no HTTP service or NDJSON reader yet. Stream definitions remain immutable version 1, with an optional sketch configuration for new streams. Adding a new definition version is future work. See docs/SKETCHES.md for the quantile contract and encoding.
+The embedded API is the engine. The CLI reads bounded UTF-8 JSON files or streaming NDJSON, and the loopback HTTP service calls the same methods. See docs/INTERFACES.md for transport limits, per-batch partial progress and HTTP routes. Stream definitions remain immutable version 1, with an optional sketch configuration for new streams. Adding a new definition version is future work. See docs/SKETCHES.md for the quantile contract and encoding.
 
 ## Ingestion
 

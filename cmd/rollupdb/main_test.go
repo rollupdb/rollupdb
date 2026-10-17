@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -150,3 +153,131 @@ func TestCLIQuantileDefinitionAndQuery(t *testing.T) {
 		t.Fatalf("CLI quantiles: %+v", result)
 	}
 }
+
+func TestCLIStreamingInputAndPartialProgress(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "ndjson.rollupdb")
+	db, err := rollupdb.Create(ctx, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := rollupdb.Definition{Name: "api", Version: 1, EffectiveAt: time.Unix(0, 0).UTC(), Statistics: []string{"count"}, MaxGroups: 1, Tiers: []rollupdb.Tier{{WidthSeconds: 1, RetainSeconds: 0, GraceSeconds: 3600}}}
+	if err = db.CreateStream(ctx, d); err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+	at := time.Now().UTC().Add(-time.Second)
+	encoded, err := json.Marshal(rollupdb.Observation{Time: at, Value: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := strings.Repeat(string(encoded)+"\n", 3) + "null\n"
+	var out bytes.Buffer
+	err = runWithInput(ctx, []string{"ingest-ndjson", path, "api", "-", "--batch-size", "2"}, strings.NewReader(input), &out)
+	if err == nil {
+		t.Fatal("malformed input succeeded")
+	}
+	var summary struct {
+		Type             string `json:"type"`
+		CommittedRecords int    `json:"committed_records"`
+		DiscardedRecords int    `json:"discarded_records"`
+		NextLine         int    `json:"next_line"`
+	}
+	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("expected receipt then failure summary: %s", out.String())
+	}
+	if err = json.Unmarshal([]byte(lines[1]), &summary); err != nil || summary.Type != "error" || summary.CommittedRecords != 2 || summary.DiscardedRecords != 1 || summary.NextLine != 3 {
+		t.Fatalf("summary: %+v %v", summary, err)
+	}
+	reopened, err := rollupdb.Open(ctx, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reopened.Close()
+	s, err := reopened.Status(ctx, "api")
+	if err != nil || s.Accepted != 2 {
+		t.Fatalf("CLI partial commits: %+v %v", s, err)
+	}
+	if err = run(ctx, []string{"serve", path, "--listen", "0.0.0.0:7070"}, &out); err == nil {
+		t.Fatal("CLI exposed remote listener")
+	}
+}
+
+func TestCLIServeShutdownAndCanceledStdin(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "server.rollupdb")
+	db, err := rollupdb.Create(context.Background(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := rollupdb.Definition{Name: "api", Version: 1, EffectiveAt: time.Unix(0, 0).UTC(), Statistics: []string{"count"}, MaxGroups: 1, Tiers: []rollupdb.Tier{{WidthSeconds: 1, RetainSeconds: 0, GraceSeconds: 3600}}}
+	if err = db.CreateStream(context.Background(), d); err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	output, input := io.Pipe()
+	defer output.Close()
+	done := make(chan error, 1)
+	go func() {
+		defer input.Close()
+		done <- run(ctx, []string{"serve", path, "--listen", "127.0.0.1:0"}, input)
+	}()
+	var listening struct {
+		Address string `json:"listening"`
+	}
+	if err = json.NewDecoder(output).Decode(&listening); err != nil {
+		t.Fatal(err)
+	}
+	client := &http.Client{Timeout: 3 * time.Second, Transport: &http.Transport{Proxy: nil}}
+	response, err := client.Get("http://" + listening.Address + "/v1/info")
+	if err != nil {
+		t.Fatal(err)
+	}
+	io.Copy(io.Discard, response.Body)
+	response.Body.Close()
+	cancel()
+	select {
+	case err = <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("CLI shutdown blocked")
+	}
+	reopened, err := rollupdb.Open(context.Background(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reopened.Close()
+	// An idle stdin pipe is owned by the command and must unblock on cancellation.
+	ctx, cancel = context.WithCancel(context.Background())
+	defer cancel()
+	reader, writer := io.Pipe()
+	defer writer.Close()
+	var out bytes.Buffer
+	go func() { done <- runWithInput(ctx, []string{"ingest-ndjson", path, "api", "-"}, reader, &out) }()
+	cancel()
+	select {
+	case err = <-done:
+		if err == nil {
+			t.Fatal("canceled import succeeded")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("canceled stdin remained blocked")
+	}
+}
+
+type signaledInput struct {
+	reader  *io.PipeReader
+	started chan struct{}
+	once    sync.Once
+}
+
+func (s *signaledInput) Read(p []byte) (int, error) {
+	s.once.Do(func() { close(s.started) })
+	return s.reader.Read(p)
+}
+func (s *signaledInput) Close() error { return s.reader.Close() }

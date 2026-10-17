@@ -1,6 +1,6 @@
 # Correctness contract
 
-This is the implementation contract. Session 4 implements initial-definition persistence, exact-statistical state, optional KLL quantiles, dimension groups, batched ingestion, grace enforcement, explicit transactional promotion/expiry, mixed-resolution queries and coverage metadata. Definition changes remain future work.
+This is the implementation contract. Session 5 implements initial-definition persistence, exact-statistical state, optional KLL quantiles, dimension groups, batched ingestion, grace enforcement, explicit transactional promotion/expiry, mixed-resolution queries, coverage metadata, streaming CLI ingestion and a local HTTP adapter. Definition changes remain future work.
 
 ## Time and stream definitions
 
