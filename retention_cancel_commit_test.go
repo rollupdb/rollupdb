@@ -34,7 +34,7 @@ func TestAdvanceCanceledAtCommitBoundaryRollsBackAllState(t *testing.T) {
 		t.Fatal("canceled transaction partially changed buckets, frontiers, groups or watermark")
 	}
 	retry, err := db.Advance(context.Background(), d.Name)
-	if err != nil || retry.SourceBuckets != 120 || retry.ParentBuckets != 2 {
+	if err != nil || retry.SourceBuckets != 120 || retry.ParentBuckets != 4 { // two minutes x two groups
 		t.Fatalf("retry after cancellation: %+v %v", retry, err)
 	}
 	again, err := db.Advance(context.Background(), d.Name)
