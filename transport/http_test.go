@@ -78,6 +78,12 @@ func TestHTTPFullLifecycleMatchesEmbeddedAndDownloadsSnapshot(t *testing.T) {
 	if w = request(t, h, "POST", "/v1/advance", struct{}{}); w.Code != 200 || !strings.Contains(w.Body.String(), `"api"`) {
 		t.Fatalf("advance all: %d %s", w.Code, w.Body.String())
 	}
+	if w = request(t, h, "POST", "/v1/sql", map[string]string{"sql": "SELECT sum(count) FROM api"}); w.Code != 200 || !strings.Contains(w.Body.String(), `"rows":[[1]]`) {
+		t.Fatalf("sql: %d %s", w.Code, w.Body.String())
+	}
+	if w = request(t, h, "POST", "/v1/sql", map[string]string{"sql": "DELETE FROM buckets"}); w.Code != 400 || !strings.Contains(w.Body.String(), `"code":"sql"`) {
+		t.Fatalf("sql write: %d %s", w.Code, w.Body.String())
+	}
 	w = request(t, h, "GET", "/v1/snapshot", nil)
 	if w.Code != 200 || w.Header().Get("Content-Type") != "application/octet-stream" || w.Header().Get("Content-Length") == "" {
 		t.Fatalf("snapshot: %d %s", w.Code, w.Body.String())

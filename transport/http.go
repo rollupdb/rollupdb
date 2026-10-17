@@ -55,6 +55,8 @@ func engineError(w http.ResponseWriter, err error) {
 		problem(w, 400, "invalid_request", "invalid engine request")
 	case errors.Is(err, rollupdb.ErrStreamNotActive):
 		problem(w, 409, "stream_not_active", "stream is not active at the host clock")
+	case errors.Is(err, rollupdb.ErrSQL):
+		problem(w, 400, "sql", strings.TrimPrefix(err.Error(), rollupdb.ErrSQL.Error()+": "))
 	case errors.Is(err, rollupdb.ErrDefinitionChange):
 		problem(w, 409, "definition_change", strings.TrimPrefix(err.Error(), rollupdb.ErrDefinitionChange.Error()+": "))
 	case errors.Is(err, rollupdb.ErrClockJump):
@@ -146,6 +148,20 @@ func NewHandler(db *rollupdb.DB) http.Handler {
 			Name    string `json:"name"`
 			Version int    `json:"version"`
 		}{d.Name, d.Version})
+	})
+	mux.HandleFunc("POST /v1/sql", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			SQL string `json:"sql"`
+		}
+		if !decodeRequest(w, r, &body, MaxJSONBody) {
+			return
+		}
+		result, err := db.SQL(r.Context(), body.SQL)
+		if err != nil {
+			engineError(w, err)
+			return
+		}
+		jsonResponse(w, 200, result)
 	})
 	mux.HandleFunc("GET /v1/streams", func(w http.ResponseWriter, r *http.Request) {
 		names, err := db.Streams(r.Context())

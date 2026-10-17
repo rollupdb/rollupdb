@@ -315,3 +315,28 @@ func TestCLIAdvanceAllStreams(t *testing.T) {
 		t.Fatalf("advance FILE skipped the stream: %s", out.String())
 	}
 }
+
+func TestCLISQL(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "sql.rollupdb")
+	var out bytes.Buffer
+	ctx := context.Background()
+	for _, args := range [][]string{{"init", path}, {"create-stream", path, "../../examples/api_requests.json"}} {
+		if err := run(ctx, args, &out); err != nil {
+			t.Fatalf("%v: %v", args, err)
+		}
+	}
+	out.Reset()
+	if err := run(ctx, []string{"sql", path, "SELECT count(*) AS buckets FROM api_requests"}, &out); err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.TrimSpace(out.String()); got != `{"columns":["buckets"],"rows":[[0]],"truncated":false}` {
+		t.Fatalf("sql: %s", got)
+	}
+	out.Reset()
+	if err := runWithInput(ctx, []string{"sql", path, "-"}, strings.NewReader("SELECT 1 AS one"), &out); err != nil || !strings.Contains(out.String(), `"rows":[[1]]`) {
+		t.Fatalf("sql from stdin: %s %v", out.String(), err)
+	}
+	if err := run(ctx, []string{"sql", path, "DROP TABLE buckets"}, &out); err == nil {
+		t.Fatal("sql accepted a write")
+	}
+}

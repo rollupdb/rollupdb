@@ -57,7 +57,7 @@ go test -race ./...
 go vet ./...
 ```
 
-There is no SQL interface yet.
+Read-only SQL over the retained buckets is available through `db.SQL`, `rollupdb sql` and `POST /v1/sql`; see [SQL](docs/SQL.md).
 
 ## License
 

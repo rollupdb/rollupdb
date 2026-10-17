@@ -31,7 +31,7 @@ func run(ctx context.Context, args []string, out io.Writer) (err error) {
 }
 
 func runWithInput(ctx context.Context, args []string, input io.Reader, out io.Writer) (err error) {
-	const usage = "Usage: rollupdb version | init FILE | migrate FILE | inspect FILE | snapshot FILE DEST | create-stream FILE DEFINITION.json | update-stream FILE DEFINITION.json | stream FILE NAME | stats FILE NAME | advance FILE [NAME] | ingest FILE BATCH.json | query FILE QUERY.json | ingest-ndjson FILE STREAM INPUT [--batch-size N] | serve FILE [--listen 127.0.0.1:7070] [--advance-every 1m]"
+	const usage = "Usage: rollupdb version | init FILE | migrate FILE | inspect FILE | snapshot FILE DEST | create-stream FILE DEFINITION.json | update-stream FILE DEFINITION.json | stream FILE NAME | stats FILE NAME | advance FILE [NAME] | ingest FILE BATCH.json | query FILE QUERY.json | sql FILE STATEMENT | ingest-ndjson FILE STREAM INPUT [--batch-size N] | serve FILE [--listen 127.0.0.1:7070] [--advance-every 1m]"
 	if len(args) == 1 && (args[0] == "version" || args[0] == "--version") {
 		_, err := fmt.Fprintln(out, "rollupdb "+rollupdb.Version)
 		return err
@@ -60,7 +60,7 @@ func runWithInput(ctx context.Context, args []string, input io.Reader, out io.Wr
 		} else {
 			want = 3
 		}
-	case "snapshot", "create-stream", "update-stream", "stream", "ingest", "query", "stats":
+	case "snapshot", "create-stream", "update-stream", "stream", "ingest", "query", "sql", "stats":
 		want = 3
 	default:
 		return fmt.Errorf("unknown command %q", op)
@@ -92,6 +92,20 @@ func runWithInput(ctx context.Context, args []string, input io.Reader, out io.Wr
 			return err
 		}
 		return db.CreateStream(ctx, d)
+	case "sql":
+		statement := args[2]
+		if statement == "-" {
+			body, err := io.ReadAll(io.LimitReader(input, 64<<10+1))
+			if err != nil {
+				return err
+			}
+			statement = string(body)
+		}
+		result, err := db.SQL(ctx, statement)
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(out).Encode(result)
 	case "update-stream":
 		var d rollupdb.Definition
 		if err = decodeFile(args[2], &d, 1<<20); err != nil {

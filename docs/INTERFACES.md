@@ -57,6 +57,7 @@ There is no authentication or TLS. This is a trusted local-process interface, no
 | POST | /v1/query | Query; exact statistics, quantiles and coverage |
 | POST | /v1/streams/NAME/advance | Empty object {}; explicit retention result |
 | GET | /v1/streams | {"streams": [names]} |
+| POST | /v1/sql | {"sql": "SELECT ..."}; columns and rows, see docs/SQL.md |
 | POST | /v1/advance | Empty object {}; results for every stream, by name |
 | GET | /v1/snapshot | Standalone snapshot download |
 
