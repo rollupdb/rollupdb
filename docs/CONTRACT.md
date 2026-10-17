@@ -1,6 +1,6 @@
 # Correctness contract
 
-This is the implementation contract. Session 2 implements initial-definition persistence, exact-statistical state, dimension groups, batched ingestion, grace enforcement, single-tier queries and coverage metadata. Sketches, definition changes, multi-tier promotion and expiry remain targets for subsequent sessions.
+This is the implementation contract. Session 3 implements initial-definition persistence, exact-statistical state, optional KLL quantiles, dimension groups, batched ingestion, grace enforcement, single-tier queries and coverage metadata. Definition changes, multi-tier promotion and expiry remain targets for subsequent sessions.
 
 ## Time and stream definitions
 
@@ -10,7 +10,7 @@ A definition has a stream name, immutable version, effective timestamp, ordered 
 
 Currently only creation of version 1 is available. Subsequent changes create new immutable versions rather than editing old definitions. New dimensions cannot be inferred historically. New statistics apply from their coverage date unless demonstrably derivable from retained state. Definition transitions must align to the coarsest tier boundary to avoid cross-version bucket ambiguity. Future ingestion before the first effective timestamp or against a mismatched definition is rejected.
 
-The dimensions are one joint grouping, not independent marginals. Keys are JSON arrays of values in declared dimension order, with UTF-8 values limited to 1024 bytes and the encoded tuple limited to 4096 bytes. Queries may combine retained groups and filter declared dimensions. They cannot filter or group by information never retained. Reject new groups once the limit is reached; never collapse them into unrelated groups. Retain dimension keys while referenced by live buckets and reclaim keys only when their last bucket expires. Expiry is not implemented yet, so Session 2 never reclaims dimension keys. Infinite final retention can make historical keys persist forever, so a configured group cap remains necessary.
+The dimensions are one joint grouping, not independent marginals. Keys are JSON arrays of values in declared dimension order, with UTF-8 values limited to 1024 bytes and the encoded tuple limited to 4096 bytes. Queries may combine retained groups and filter declared dimensions. They cannot filter or group by information never retained. Reject new groups once the limit is reached; never collapse them into unrelated groups. Retain dimension keys while referenced by live buckets and reclaim keys only when their last bucket expires. Expiry is not implemented yet, so this checkpoint never reclaims dimension keys. Infinite final retention can make historical keys persist forever, so a configured group cap remains necessary.
 
 ## Retention and grace
 
@@ -36,7 +36,7 @@ Persist a checked integer count, compensated floating-point sum, min, max, runni
 
 An empty covered interval may have count zero and sum zero; min, max, average and variance are null. This differs from an interval outside collection coverage, expired history or a statistic unavailable under the historical definition. Those cases need availability metadata and cannot be encoded as all-zero observations. Statistics not selected for public retention are not exposed merely because internal state could derive them.
 
-One mergeable percentile sketch will be selected in Session 3. Never store a list of per-bucket percentile answers as a substitute for a distribution summary. Each sketch's algorithm, encoding version and parameters must be recoverable from its bucket or immutable definition. Only documented compatible merges are supported. If merging different supported parameter sizes changes accuracy, disclose the resulting bound. A rank-error guarantee is not a relative value-error guarantee. Measure both rank discrepancy and observed value discrepancy against a reference, with duplicate-aware rank intervals and documented handling of quantile conventions.
+Session 3 uses Apache DataSketches Go v0.2.0 generic float64 KLL. It stores mergeable distribution state, not per-bucket percentile answers. The immutable definition and checksummed bucket envelope both identify algorithm, encoding version and K/M settings. The first codec supports equal-K merges only, with M=8 and 64<=K<=4096; incompatible types, settings or versions fail before mutation. A missing sketch in a configured populated bucket is corruption, not zero or an empty distribution. A rank-error model is not a relative value-error guarantee. Measurements use duplicate-aware rank intervals and an independent sorted nearest-rank reference; details are in docs/SKETCHES.md. Repeated multi-bucket query merges can vary because compaction is randomized; single stored sketches are stable when simply deserialized and queried.
 
 ## Queries and coverage
 

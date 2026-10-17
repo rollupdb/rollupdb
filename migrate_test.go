@@ -1,6 +1,7 @@
 package rollupdb
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -66,7 +67,7 @@ func TestExplicitMigrationPreservesDefinitionAndIdentity(t *testing.T) {
 	}
 	defer db.Close()
 	i, err := db.Info(ctx)
-	if err != nil || i.FormatVersion != 2 || i.FileID != "0123456789abcdef0123456789abcdef" || i.Streams != 1 {
+	if err != nil || i.FormatVersion != FormatVersion || i.FileID != "0123456789abcdef0123456789abcdef" || i.Streams != 1 {
 		t.Fatalf("migration info: %+v %v", i, err)
 	}
 	d, err := db.Stream(ctx, "legacy")
@@ -113,5 +114,92 @@ func TestFailedMigrationRollsBackDDLAndVersion(t *testing.T) {
 	}
 	if version != 1 || count != 0 {
 		t.Fatalf("partial migration survived: version=%d runtime=%d", version, count)
+	}
+}
+
+func revision2File(t *testing.T) string {
+	t.Helper()
+	path := legacyFile(t)
+	s, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if _, err = s.Exec(schemaV2); err != nil {
+		t.Fatal(err)
+	}
+	at := time.Date(2026, 10, 17, 12, 1, 59, 0, time.UTC).UnixNano()
+	if _, err = s.Exec(`INSERT INTO dimension_groups VALUES('legacy',1,'["web"]',?)`, at); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = s.Exec(`INSERT INTO buckets VALUES('legacy',1,'["web"]',0,?,4,70,0,10,20,17.5,75)`, at); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = s.Exec(`UPDATE stream_runtime SET watermark_ns=?,coverage_start_ns=?,accepted=4 WHERE stream='legacy'`, at+int64(time.Second), at-int64(time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func TestRevision2MigrationKeepsExactStateWithoutInventingSketches(t *testing.T) {
+	path := revision2File(t)
+	ctx := context.Background()
+	before, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = Open(ctx, path); !errors.Is(err, ErrFormatVersion) {
+		t.Fatalf("revision 2 opened implicitly: %v", err)
+	}
+	after, err := os.ReadFile(path)
+	if err != nil || !bytes.Equal(before, after) {
+		t.Fatal("Open changed revision 2")
+	}
+	if err = Migrate(ctx, path); err != nil {
+		t.Fatal(err)
+	}
+	db, err := Open(ctx, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	q := Query{Stream: "legacy", Version: 1, From: time.Date(2026, 10, 17, 12, 1, 59, 0, time.UTC), To: time.Date(2026, 10, 17, 12, 2, 0, 0, time.UTC), Quantiles: []float64{0.5}}
+	r, err := db.Query(ctx, q)
+	if err != nil || r.Statistics["count"] != int64(4) || r.Statistics["avg"] != 17.5 || r.QuantileAccuracy.Availability != "not_retained" || r.Quantiles[0].Value != nil {
+		t.Fatalf("migration fabricated distribution or lost state: %+v %v", r, err)
+	}
+	var payload []byte
+	if err = db.sql.QueryRow("SELECT sketch FROM buckets").Scan(&payload); err != nil || payload != nil {
+		t.Fatal("migration populated a sketch")
+	}
+}
+
+func TestRevision2MigrationFailurePreservesVersionAndBuckets(t *testing.T) {
+	path := revision2File(t)
+	s, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = s.Exec("ALTER TABLE buckets ADD COLUMN sketch BLOB"); err != nil {
+		t.Fatal(err)
+	}
+	s.Close()
+	if err = Migrate(context.Background(), path); err == nil {
+		t.Fatal("conflicting migration accepted")
+	}
+	s, err = sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	var version, n int
+	if err = s.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
+		t.Fatal(err)
+	}
+	if err = s.QueryRow("SELECT n FROM buckets").Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if version != 2 || n != 4 {
+		t.Fatalf("failed migration changed version or buckets: %d %d", version, n)
 	}
 }

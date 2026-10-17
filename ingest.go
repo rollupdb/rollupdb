@@ -177,6 +177,7 @@ func (db *DB) Ingest(ctx context.Context, batch Batch) (BatchResult, error) {
 	}
 	groups := make(map[string]*cachedGroup)
 	states := make(map[bucketKey]exactState)
+	sketches := make(map[bucketKey]*quantileSketch)
 	dirty := make(map[bucketKey]bool)
 	result := BatchResult{Outcomes: make([]Outcome, len(batch.Observations)), ObservedThrough: time.Unix(0, watermark).UTC()}
 	for i, observation := range batch.Observations {
@@ -229,18 +230,36 @@ func (db *DB) Ingest(ctx context.Context, batch Batch) (BatchResult, error) {
 		bk := bucketKey{key, start}
 		state, ok := states[bk]
 		if !ok {
-			err = tx.QueryRowContext(ctx, `SELECT n,sum,sum_comp,min,max,mean,m2 FROM buckets WHERE stream=? AND version=1 AND tuple_key=? AND tier=0 AND start_ns=?`, d.Name, key, start).Scan(&state.N, &state.Sum, &state.SumComp, &state.Min, &state.Max, &state.Mean, &state.M2)
+			var encoded []byte
+			err = tx.QueryRowContext(ctx, `SELECT n,sum,sum_comp,min,max,mean,m2,sketch FROM buckets WHERE stream=? AND version=1 AND tuple_key=? AND tier=0 AND start_ns=?`, d.Name, key, start).Scan(&state.N, &state.Sum, &state.SumComp, &state.Min, &state.Max, &state.Mean, &state.M2, &encoded)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				return BatchResult{}, err
 			}
 			if !state.valid() {
 				return BatchResult{}, errors.New("rollupdb: invalid persisted statistical state")
 			}
+			if d.Sketch != nil {
+				var sketch *quantileSketch
+				if state.N == 0 && encoded == nil {
+					sketch, err = newQuantileSketch(*d.Sketch)
+				} else {
+					sketch, err = decodeQuantileSketch(encoded, *d.Sketch, state)
+				}
+				if err != nil {
+					return BatchResult{}, err
+				}
+				sketches[bk] = sketch
+			} else if encoded != nil {
+				return BatchResult{}, ErrSketchEncoding
+			}
 		}
 		next, stateErr := state.add(observation.Value)
 		if stateErr != nil {
 			rejectInvalid("numeric_overflow")
 			continue
+		}
+		if d.Sketch != nil {
+			sketches[bk].update(observation.Value)
 		}
 		if !group.exists {
 			group.exists = true
@@ -263,7 +282,17 @@ func (db *DB) Ingest(ctx context.Context, batch Batch) (BatchResult, error) {
 	}
 	for key := range dirty {
 		s := states[key]
-		if _, err = tx.ExecContext(ctx, `INSERT INTO buckets(stream,version,tuple_key,tier,start_ns,n,sum,sum_comp,min,max,mean,m2) VALUES(?,1,?,0,?,?,?,?,?,?,?,?) ON CONFLICT(stream,version,tuple_key,tier,start_ns) DO UPDATE SET n=excluded.n,sum=excluded.sum,sum_comp=excluded.sum_comp,min=excluded.min,max=excluded.max,mean=excluded.mean,m2=excluded.m2`, d.Name, key.tuple, key.start, s.N, s.Sum, s.SumComp, s.Min, s.Max, s.Mean, s.M2); err != nil {
+		var encoded []byte
+		if d.Sketch != nil {
+			encoded, err = sketches[key].encode()
+			if err != nil {
+				return BatchResult{}, err
+			}
+			if err = validateKLLPayload(encoded[sketchHeaderBytes:], *d.Sketch, s); err != nil {
+				return BatchResult{}, err
+			}
+		}
+		if _, err = tx.ExecContext(ctx, `INSERT INTO buckets(stream,version,tuple_key,tier,start_ns,n,sum,sum_comp,min,max,mean,m2,sketch) VALUES(?,1,?,0,?,?,?,?,?,?,?,?,?) ON CONFLICT(stream,version,tuple_key,tier,start_ns) DO UPDATE SET n=excluded.n,sum=excluded.sum,sum_comp=excluded.sum_comp,min=excluded.min,max=excluded.max,mean=excluded.mean,m2=excluded.m2,sketch=excluded.sketch`, d.Name, key.tuple, key.start, s.N, s.Sum, s.SumComp, s.Min, s.Max, s.Mean, s.M2, encoded); err != nil {
 			return BatchResult{}, err
 		}
 	}

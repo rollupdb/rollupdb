@@ -1,6 +1,6 @@
-# Session 2 API and numerical behavior
+# Session 3 API and numerical behavior
 
-The embedded API is the engine. The CLI reads bounded UTF-8 JSON files and calls the same methods. There is no HTTP service or NDJSON reader yet. Stream definitions remain immutable version 1; adding a new definition version is future work.
+The embedded API is the engine. The CLI reads bounded UTF-8 JSON files and calls the same methods. There is no HTTP service or NDJSON reader yet. Stream definitions remain immutable version 1, with an optional sketch configuration for new streams. Adding a new definition version is future work. See docs/SKETCHES.md for the quantile contract and encoding.
 
 ## Ingestion
 
@@ -44,7 +44,7 @@ Before the first committed batch, coverage is absent and every selected statisti
 
 A covered interval with no observations returns count=0 and sum=0, with min, max, avg and variances null. A range outside recorded coverage returns null statistics and a not_collected or not_observed_yet gap. A partially covered request returns statistics only for the available observations and complete=false; callers must inspect coverage. The active bucket may be included in an aligned request, with actual coverage ending one nanosecond after the inclusive watermark and the unobserved suffix reported explicitly. This is a snapshot of incomplete collection, not proportional subdivision of a stored bucket. Requests with unaligned time boundaries return ErrPartialBucket.
 
-`db.Status(ctx, stream)` and `rollupdb stats FILE STREAM` return lifetime counters, retained group and bucket counts, coverage_start and observed_through_inclusive. No historical definition changes, coarse-tier query plans, percentile estimates, expiry or group reclamation are implemented yet.
+db.Status(ctx, stream) and rollupdb stats FILE STREAM return lifetime counters, retained group and bucket counts, coverage_start and observed_through_inclusive. A query may additionally request up to 32 distinct normalized ranks in quantiles, each finite and in [0,1]. Sketch-enabled streams list quantiles in available_statistics and return a separate quantiles array plus quantile_accuracy. Exact-only streams return null quantile values with availability=not_retained. A configured stream without data returns not_collected or no_observations, as appropriate. Rank 0/1 use the preserved exact extrema. No definition changes, coarse-tier query plans, expiry or group reclamation are implemented yet.
 
 ## Arithmetic and tested precision
 
@@ -52,4 +52,4 @@ Each bucket stores integer count, compensated sum and compensation, min, max, ru
 
 Finite input does not guarantee finite intermediate arithmetic. If sum, compensation, mean, M2 or a checked count cannot be represented, ingestion rejects that observation without state mutation. Query merging returns ErrNumericOverflow if the combined state is unrepresentable. All exact state is maintained internally even when the public definition selects a subset, so internal arithmetic limits apply to count-only streams too. Extremely opposed magnitudes can be rejected conservatively even when some individual requested answers would be representable.
 
-Tests compare direct ingestion and unequal-sized partition merges with an independent big.Rat reference. The large-offset fixture uses 257 exactly representable inputs near 1e12 with quarter-unit increments. Its mean tolerance is 0.0002 absolute, variance tolerance 0.0002 absolute plus 0.1% relative, and sum tolerance 1e-15 relative. Ordinary small-integer fixtures use 1e-12 absolute variance tolerance. These are acceptance tolerances for those documented workloads, not universal guarantees over arbitrary float64 sequences. Merge order can change rounding. No statistical sketch error exists yet because sketches have not been added.
+Tests compare direct ingestion and unequal-sized partition merges with an independent big.Rat reference. The large-offset fixture uses 257 exactly representable inputs near 1e12 with quarter-unit increments. Its mean tolerance is 0.0002 absolute, variance tolerance 0.0002 absolute plus 0.1% relative, and sum tolerance 1e-15 relative. Ordinary small-integer fixtures use 1e-12 absolute variance tolerance. These are acceptance tolerances for those documented workloads, not universal guarantees over arbitrary float64 sequences. Merge order can change rounding. KLL quantiles have a separate empirical rank-error model, not a float64 or relative-value guarantee; the observed errors are measured against an independent sorted reference in docs/accuracy-session-3.json.

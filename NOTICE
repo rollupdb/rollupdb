@@ -5,3 +5,8 @@ This prototype has no selected distribution license. Dependency components
 retain their respective licenses. No public release or binary distribution
 is authorized by this notice; choose the project license and include required
 dependency notices before preparing the first public release.
+
+The compactCapacity function in kll_format.go is adapted from Apache
+DataSketches Go v0.2.0 under the Apache License, Version 2.0. Its license and
+original notice are retained in third_party/datasketches/. This dependency
+license does not select the license for original RollupDB code.

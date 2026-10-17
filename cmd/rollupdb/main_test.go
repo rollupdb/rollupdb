@@ -114,3 +114,39 @@ func TestCLIRejectsInvalidInvocationAndDefinitions(t *testing.T) {
 		}
 	}
 }
+
+func TestCLIQuantileDefinitionAndQuery(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "quantiles.rollupdb")
+	var out bytes.Buffer
+	write := func(name string, value any) string {
+		t.Helper()
+		body, err := json.Marshal(value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		p := filepath.Join(dir, name)
+		if err = os.WriteFile(p, body, 0600); err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	d := rollupdb.Definition{Name: "latency", Version: 1, EffectiveAt: time.Unix(0, 0).UTC(), Statistics: []string{"count", "avg"}, MaxGroups: 1, Tiers: []rollupdb.Tier{{WidthSeconds: 1, RetainSeconds: 0, GraceSeconds: 3600}}, Sketch: &rollupdb.SketchConfig{Algorithm: rollupdb.SketchAlgorithm, EncodingVersion: 1, K: 200, M: 8}}
+	at := time.Now().UTC().Truncate(time.Second).Add(-time.Second)
+	batch := rollupdb.Batch{Stream: d.Name, Version: 1, Observations: []rollupdb.Observation{{Time: at, Value: 1}, {Time: at, Value: 2}, {Time: at, Value: 3}}}
+	q := rollupdb.Query{Stream: d.Name, Version: 1, From: at, To: at.Add(time.Second), Quantiles: []float64{0.5, 0.99}}
+	for _, args := range [][]string{{"init", path}, {"create-stream", path, write("definition.json", d)}, {"ingest", path, write("batch.json", batch)}, {"query", path, write("query.json", q)}} {
+		out.Reset()
+		if err := run(ctx, args, &out); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var result rollupdb.QueryResult
+	if err := json.Unmarshal(out.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.QuantileAccuracy == nil || result.QuantileAccuracy.Availability != "available" || len(result.Quantiles) != 2 || *result.Quantiles[0].Value != 2 || *result.Quantiles[1].Value != 3 {
+		t.Fatalf("CLI quantiles: %+v", result)
+	}
+}

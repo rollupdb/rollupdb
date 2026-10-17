@@ -33,6 +33,10 @@ jobs:
         env:
           CGO_ENABLED: '0'
         run: go run ./examples/replay
+      - name: Quantile accuracy and snapshot example
+        env:
+          CGO_ENABLED: '0'
+        run: go run ./examples/accuracy -n 2000 -summary
       - name: Build without CGo
         env:
           CGO_ENABLED: '0'

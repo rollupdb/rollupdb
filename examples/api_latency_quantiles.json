@@ -1,0 +1,13 @@
+{
+  "name": "api_latency",
+  "version": 1,
+  "effective_at": "2026-10-17T00:00:00Z",
+  "dimensions": ["service"],
+  "statistics": ["count", "sum", "min", "max", "avg", "variance_population", "variance_sample"],
+  "max_groups": 1000,
+  "tiers": [
+    {"width_seconds": 1, "retain_seconds": 3600, "grace_seconds": 120},
+    {"width_seconds": 60, "retain_seconds": 0, "grace_seconds": 120}
+  ],
+  "sketch": {"algorithm": "kll_float64", "encoding_version": 1, "k": 200, "m": 8}
+}

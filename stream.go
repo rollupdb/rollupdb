@@ -22,25 +22,30 @@ type Tier struct {
 // Definition is immutable once persisted. Only creation of version 1 is exposed
 // in this prototype; definition changes are future work.
 type Definition struct {
-	Name        string    `json:"name"`
-	Version     int       `json:"version"`
-	EffectiveAt time.Time `json:"effective_at"`
-	Dimensions  []string  `json:"dimensions"`
-	Statistics  []string  `json:"statistics"`
-	MaxGroups   int       `json:"max_groups"`
-	Tiers       []Tier    `json:"tiers"`
+	Name        string        `json:"name"`
+	Version     int           `json:"version"`
+	EffectiveAt time.Time     `json:"effective_at"`
+	Dimensions  []string      `json:"dimensions"`
+	Statistics  []string      `json:"statistics"`
+	MaxGroups   int           `json:"max_groups"`
+	Tiers       []Tier        `json:"tiers"`
+	Sketch      *SketchConfig `json:"sketch,omitempty"`
 }
 
 var identifier = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]{0,63}$`)
 
-// Validate checks the initial fixed-tier contract. Percentile configuration is
-// intentionally unavailable until the sketch implementation is selected.
+// Validate checks the fixed-tier and optional immutable sketch contracts.
 func (d Definition) Validate() error {
 	if !identifier.MatchString(d.Name) {
 		return errors.New("invalid stream name: use up to 64 ASCII letters, digits and underscores, starting with a letter or underscore")
 	}
 	if d.Version != 1 {
 		return errors.New("only new stream version 1 is supported")
+	}
+	if d.Sketch != nil {
+		if err := d.Sketch.Validate(); err != nil {
+			return err
+		}
 	}
 	if d.MaxGroups < 1 || d.MaxGroups > 1_000_000 {
 		return errors.New("max_groups must be between 1 and 1000000")
@@ -164,6 +169,9 @@ func readDefinition(ctx context.Context, reader rowReader, name string) (Definit
 	var d Definition
 	if err := json.Unmarshal([]byte(encoded), &d); err != nil {
 		return d, err
+	}
+	if d.Name != name {
+		return Definition{}, errors.New("rollupdb: corrupt definition identity")
 	}
 	return d, d.Validate()
 }

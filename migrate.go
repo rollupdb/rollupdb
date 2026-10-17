@@ -36,7 +36,10 @@ CREATE INDEX buckets_time ON buckets(stream,version,tier,start_ns);
 PRAGMA user_version = 2;
 `
 
-func migrateV2(ctx context.Context, s *sql.DB) error {
+const schemaV3 = `ALTER TABLE buckets ADD COLUMN sketch BLOB;
+PRAGMA user_version=3;`
+
+func migrateCurrent(ctx context.Context, s *sql.DB, version int) error {
 	tx, err := s.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -47,8 +50,13 @@ func migrateV2(ctx context.Context, s *sql.DB) error {
 	if err = tx.QueryRowContext(ctx, "SELECT file_id FROM store_meta WHERE singleton=1").Scan(&id); err != nil {
 		return fmt.Errorf("migration source: %w", err)
 	}
-	if _, err = tx.ExecContext(ctx, schemaV2); err != nil {
-		return fmt.Errorf("migrate revision 1 to 2: %w", err)
+	if version == 1 {
+		if _, err = tx.ExecContext(ctx, schemaV2); err != nil {
+			return fmt.Errorf("migrate revision 1 to 2: %w", err)
+		}
+	}
+	if _, err = tx.ExecContext(ctx, schemaV3); err != nil {
+		return fmt.Errorf("migrate revision %d to 3: %w", version, err)
 	}
 	return tx.Commit()
 }

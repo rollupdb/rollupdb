@@ -2,10 +2,18 @@ package rollupdb
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
 )
+
+func TestQueryJSONRejectsNullQuantile(t *testing.T) {
+	var q Query
+	if err := json.Unmarshal([]byte(`{"stream":"api","version":1,"from":"2026-10-17T12:00:00Z","to":"2026-10-17T12:01:00Z","quantiles":[null]}`), &q); !errors.Is(err, ErrInvalidRequest) {
+		t.Fatalf("null became rank zero: %v", err)
+	}
+}
 
 func TestQueryCoverageDistinguishesMissingEmptyAndCurrent(t *testing.T) {
 	db, now, d, _ := ingestionDB(t)

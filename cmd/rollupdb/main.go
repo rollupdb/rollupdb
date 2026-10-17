@@ -23,7 +23,7 @@ func main() {
 func run(ctx context.Context, args []string, out io.Writer) (err error) {
 	const usage = "Usage: rollupdb init FILE | migrate FILE | inspect FILE | snapshot FILE DEST | create-stream FILE DEFINITION.json | stream FILE NAME | stats FILE NAME | ingest FILE BATCH.json | query FILE QUERY.json"
 	if len(args) == 1 && (args[0] == "help" || args[0] == "--help" || args[0] == "-h") {
-		_, err := fmt.Fprintln(out, "RollupDB prototype\n"+usage+"\nExact ingestion and single-tier queries are available. Sketches and automatic rollups are not yet implemented.")
+		_, err := fmt.Fprintln(out, "RollupDB prototype\n"+usage+"\nExact aggregation and optional KLL quantiles are available. Automatic rollups are not yet implemented.")
 		return err
 	}
 	if len(args) < 2 {
