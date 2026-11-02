@@ -107,11 +107,12 @@ Design decisions:
 - Version 0.5.0.
 
 Steps:
-1. [ ] A1 batch IDs, revision 5 and migrate, CLI and HTTP, tests.
-2. [ ] A2 atomic snapshot, tests (including a killed snapshot).
-3. [ ] B remote-write: snappy and protobuf decoding (local tests), map
-   file, endpoint, tests with real Prometheus-encoded payloads.
-4. [ ] Docs and upkeep.
+1. [x] A1 batch IDs, revision 5 and migrate, CLI and HTTP, tests (batchid_test.go, transport/batchid_test.go; CI green on 3 OS).
+2. [x] A2 atomic snapshot, tests (snapshot_atomic_test.go: no temp left, a name appearing mid-snapshot is never replaced, killed after writing and killed mid-VACUUM leave no destination; a killed VACUUM also leaves the temp's -journal).
+3. [x] B remote-write (transport/remotewrite.go, snappy.go): fixtures in
+   transport/testdata/remotewrite written by the official protobuf runtime
+   and cramjam's snappy (generate.py); stats at GET /api/v1/write/stats.
+4. [x] Docs and upkeep (README install and remote-write sections, API, INTERFACES, FORMAT, CONTRACT, RELEASE_CANDIDATE).
 5. [ ] Independent review (at most two rounds), fixes, fresh test/results.
 6. [ ] 0.5.0 released by the workflow, downloads checked.
 7. [ ] rollupdb.com post with its own SVG, pages; softdevstudio.com note;

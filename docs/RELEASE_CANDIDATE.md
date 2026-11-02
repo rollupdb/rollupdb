@@ -1,26 +1,29 @@
-# RollupDB 0.1: what it does and where it stops
+# RollupDB: what it does and where it stops
 
 RollupDB is open source under the Apache License 2.0. Releases are built and published automatically; see [RELEASING.md](../RELEASING.md).
 
-RollupDB is a Go embedded aggregate database storing declared numeric statistics in a portable SQLite-backed `.rollupdb` snapshot. It ingests bounded batches or NDJSON, offers a loopback-only HTTP interface, maintains mergeable exact aggregates and optional KLL quantiles, and explicitly advances fixed UTC retention tiers.
+RollupDB is a Go embedded aggregate database storing declared numeric statistics in a portable SQLite-backed `.rollupdb` snapshot. It ingests bounded batches, NDJSON or Prometheus remote write, offers a loopback-only HTTP interface, maintains mergeable exact aggregates and optional KLL quantiles, advances fixed UTC retention tiers on a schedule or on request, and answers read-only SQL.
 
 ## Functionality
 
 - Exact count, compensated sum, minimum, maximum, mean, population and sample variance, with documented floating-point limitations.
 - Optional approximate quantiles with DataSketches KLL, exposing rank-error metadata; rank error is not a guarantee of relative value error.
 - Fixed-width time tiers, grace-based lateness rejection, transactional promotion/expiry, and disjoint retained-resolution query coverage.
-- Single-owner local database, explicit migration from earlier revisions to revision 4, consistent snapshot export, and copy/reopen of completed snapshots.
-- CLI and trusted-local HTTP; no authentication, TLS or public listener. Batch retries are new observations; there is no event deduplication.
+- Stream versions that change retention, grace, group limits and statistics, or add a sketch, without moving stored data.
+- Single-owner local database, explicit migration from earlier revisions to revision 5, consistent snapshot export published atomically, and copy/reopen of completed snapshots.
+- CLI and trusted-local HTTP; no authentication, TLS or public listener. A batch sent with a batch ID is stored once however often it is retried within the ID retention (seven days by default); a batch without one is new input every time. Single observations are never deduplicated.
+- Prometheus remote write 1.0 into mapped streams (float samples; native histograms and exemplars are skipped).
 - Reproducible multi-year experiments, with independently evaluated exact state and approximate rank/value error.
 
 ## Scope and known limitations
 
-The engine is single-writer, single-machine, and local-filesystem only. It does not offer SQL writes, clustering, remote authentication, dashboards or general-purpose raw-event search. Running SQLite WAL may create sidecar files: never copy only the live main database. Use `snapshot` and copy the completed export. Snapshot output is not atomically published, and a killed process can leave an incomplete destination. An explicit `Advance` may hold the engine mutex for a large backlog. Separate owner processes and network filesystems are unsupported. A timed-out or disconnected ingest request is not proof that its transaction rolled back. Retrying without an application-level reconciliation mechanism may double count.
+The engine is single-writer, single-machine, and local-filesystem only. It does not offer SQL writes, clustering, remote authentication, dashboards or general-purpose raw-event search. Running SQLite WAL may create sidecar files: never copy only the live main database. Use `snapshot` and copy the completed export. A killed snapshot can leave a hidden temporary file beside the destination, never a partial destination. An explicit `Advance` may hold the engine mutex for a large backlog. Separate owner processes and network filesystems are unsupported. A timed-out or disconnected ingest request is not proof that its transaction rolled back: retry it with the same batch ID, or reconcile before sending it again without one.
 
 ## Known limits
 
 - **JSON field names match without regard to case.** Unknown fields are rejected, but Go's decoder accepts `"Value"` for `"value"`.
 - **HTTP snapshots are staged in the system temp directory,** which needs room for a full copy of the database and may be small or memory-backed. For very large files, run the `snapshot` command on the host.
+- **Remote write uses the loopback listener,** so Prometheus must run on the same machine (or reach it through a tunnel the owner sets up). A request that Prometheus re-batches differently after a failure gets different batch IDs.
 
 Fixed in 0.1.1: a clock reading far ahead of a stream's watermark is now refused instead of becoming the permanent watermark (see [API](API.md)), and the HTTP snapshot route has its own 30-minute deadline instead of the 30-second request and 60-second write limits.
 
