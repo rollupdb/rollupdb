@@ -25,6 +25,7 @@ type ImportSummary struct {
 	CommittedRecords int64  `json:"committed_records"`
 	CommittedBatches int64  `json:"committed_batches"`
 	rollupdb.Counters
+	ReplayedBatches       int64  `json:"replayed_batches,omitempty"`
 	NextLine              int64  `json:"next_line"`
 	FailedLine            int64  `json:"failed_line,omitempty"`
 	DiscardedRecords      int    `json:"discarded_records"`
@@ -38,7 +39,19 @@ type ImportSummary struct {
 // failure can be ambiguous. Receipt delivery can also fail after a real commit.
 // Readers such as a blocked stdin must be closed by their owner to unblock I/O;
 // context cancellation is checked between reads and before every submission.
-func ImportNDJSON(ctx context.Context, db *rollupdb.DB, stream string, input io.Reader, batchSize int, receipt func(BatchReceipt) error) (summary ImportSummary, err error) {
+func ImportNDJSON(ctx context.Context, db *rollupdb.DB, stream string, input io.Reader, batchSize int, receipt func(BatchReceipt) error) (ImportSummary, error) {
+	return ImportNDJSONWithIDs(ctx, db, stream, input, batchSize, "", receipt)
+}
+
+// MaxBatchIDPrefix is the longest prefix ImportNDJSONWithIDs accepts, leaving
+// room for ":" and a line number in a batch ID.
+const MaxBatchIDPrefix = rollupdb.MaxBatchIDLength - 21
+
+// ImportNDJSONWithIDs is ImportNDJSON with each batch named prefix:FIRST_LINE.
+// Run again on the same input with the same prefix and batch size, batches
+// that already committed are recognized and not counted twice (their receipts
+// say "replayed"). An empty prefix sends no batch IDs.
+func ImportNDJSONWithIDs(ctx context.Context, db *rollupdb.DB, stream string, input io.Reader, batchSize int, prefix string, receipt func(BatchReceipt) error) (summary ImportSummary, err error) {
 	summary = ImportSummary{Type: "complete", NextLine: 1}
 	defer func() {
 		if err != nil {
@@ -48,6 +61,9 @@ func ImportNDJSON(ctx context.Context, db *rollupdb.DB, stream string, input io.
 	}()
 	if batchSize < 1 || batchSize > rollupdb.MaxBatchSize {
 		return summary, fmt.Errorf("batch size must be in [1,%d]", rollupdb.MaxBatchSize)
+	}
+	if len(prefix) > MaxBatchIDPrefix {
+		return summary, fmt.Errorf("batch ID prefix longer than %d bytes", MaxBatchIDPrefix)
 	}
 	if _, err = db.Stream(ctx, stream); err != nil {
 		return summary, err
@@ -64,6 +80,9 @@ func ImportNDJSON(ctx context.Context, db *rollupdb.DB, stream string, input io.
 			summary.DiscardedRecords = len(batch.Observations)
 			return e
 		}
+		if prefix != "" {
+			batch.BatchID = fmt.Sprintf("%s:%d", prefix, summary.NextLine)
+		}
 		result, e := db.Ingest(ctx, batch)
 		if e != nil {
 			summary.UnacknowledgedRecords = len(batch.Observations)
@@ -72,6 +91,9 @@ func ImportNDJSON(ctx context.Context, db *rollupdb.DB, stream string, input io.
 		first := summary.NextLine
 		summary.CommittedRecords += int64(len(batch.Observations))
 		summary.CommittedBatches++
+		if result.Replayed {
+			summary.ReplayedBatches++
+		}
 		summary.NextLine = summary.CommittedRecords + 1
 		summary.Accepted += result.Accepted
 		summary.RejectedInvalid += result.RejectedInvalid

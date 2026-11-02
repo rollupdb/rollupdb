@@ -194,6 +194,10 @@ func (db *DB) Advance(ctx context.Context, name string) (AdvanceResult, error) {
 	r.Frontiers = publicFrontiers(f)
 	// Tests can pause the owner after every retention write but before Commit.
 	// The callback must not use this DB handle (its mutex is held).
+	// Forget batch IDs past their retention.
+	if _, err = tx.ExecContext(ctx, "DELETE FROM ingest_batches WHERE stream=? AND committed_ns<?", d.Name, now.Add(-db.batchIDRetention).UnixNano()); err != nil {
+		return AdvanceResult{}, err
+	}
 	if hook, ok := ctx.Value(advanceBeforeCommitKey{}).(func()); ok {
 		hook()
 	}

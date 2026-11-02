@@ -3,7 +3,9 @@ package rollupdb
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -50,6 +52,12 @@ type Batch struct {
 	Stream       string        `json:"stream"`
 	Version      int           `json:"version"`
 	Observations []Observation `json:"observations"`
+	// BatchID, when set, names the batch so a retry is recognized: the same
+	// ID with the same observations returns the first result, marked
+	// Replayed, and changes nothing; with other observations it fails with
+	// ErrBatchConflict. 1 to 128 printable ASCII characters, unique per
+	// stream, remembered for WithBatchIDRetention after the commit.
+	BatchID string `json:"batch_id,omitempty"`
 }
 
 // Counters are committed together with accepted aggregate state.
@@ -69,6 +77,45 @@ type BatchResult struct {
 	Counters
 	Outcomes        []Outcome `json:"outcomes"`
 	ObservedThrough time.Time `json:"observed_through_inclusive"`
+	// Replayed is true when the batch ID had already committed: this is the
+	// first commit's result, and nothing was written now.
+	Replayed bool `json:"replayed,omitempty"`
+}
+
+// MaxBatchIDLength is the longest BatchID.
+const MaxBatchIDLength = 128
+
+func validBatchID(id string) bool {
+	if len(id) == 0 || len(id) > MaxBatchIDLength {
+		return false
+	}
+	for i := 0; i < len(id); i++ {
+		if id[i] < 0x21 || id[i] > 0x7e {
+			return false
+		}
+	}
+	return true
+}
+
+// batchDigest is the SHA-256 of a batch's stream, version and observations
+// in one fixed form, so a retry with the same content matches.
+func batchDigest(batch Batch) string {
+	type obs struct {
+		T string            `json:"t"`
+		V float64           `json:"v"`
+		D map[string]string `json:"d"`
+	}
+	list := make([]obs, len(batch.Observations))
+	for i, o := range batch.Observations {
+		list[i] = obs{o.Time.UTC().Format(time.RFC3339Nano), o.Value, o.Dimensions}
+	}
+	b, _ := json.Marshal(struct {
+		S string `json:"s"`
+		N int    `json:"n"`
+		O []obs  `json:"o"`
+	}{batch.Stream, batch.Version, list})
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:])
 }
 
 type runtimeState struct {
@@ -134,6 +181,13 @@ func (db *DB) Ingest(ctx context.Context, batch Batch) (BatchResult, error) {
 	if !identifier.MatchString(batch.Stream) || batch.Version < 1 || len(batch.Observations) == 0 || len(batch.Observations) > MaxBatchSize {
 		return BatchResult{}, fmt.Errorf("%w: use a valid stream, a version of 1 or more and 1..%d observations", ErrInvalidRequest, MaxBatchSize)
 	}
+	if batch.BatchID != "" && !validBatchID(batch.BatchID) {
+		return BatchResult{}, fmt.Errorf("%w: a batch ID is 1..%d printable ASCII characters", ErrInvalidRequest, MaxBatchIDLength)
+	}
+	digest := ""
+	if batch.BatchID != "" {
+		digest = batchDigest(batch)
+	}
 	db.mu.Lock()
 	defer db.mu.Unlock()
 	if db.closed {
@@ -154,6 +208,23 @@ func (db *DB) Ingest(ctx context.Context, batch Batch) (BatchResult, error) {
 	}
 	if batch.Version > d.Version {
 		return BatchResult{}, fmt.Errorf("%w: stream %q is at version %d", ErrInvalidRequest, d.Name, d.Version)
+	}
+	if batch.BatchID != "" {
+		var stored, resultJSON string
+		err = tx.QueryRowContext(ctx, "SELECT content_sha256,result_json FROM ingest_batches WHERE stream=? AND batch_id=?", d.Name, batch.BatchID).Scan(&stored, &resultJSON)
+		switch {
+		case err == nil && stored != digest:
+			return BatchResult{}, fmt.Errorf("%w: %q", ErrBatchConflict, batch.BatchID)
+		case err == nil:
+			var replay BatchResult
+			if err = json.Unmarshal([]byte(resultJSON), &replay); err != nil {
+				return BatchResult{}, fmt.Errorf("rollupdb: stored batch result: %w", err)
+			}
+			replay.Replayed = true
+			return replay, nil
+		case !errors.Is(err, sql.ErrNoRows):
+			return BatchResult{}, err
+		}
 	}
 	if now.Before(d.EffectiveAt) {
 		return BatchResult{}, ErrStreamNotActive
@@ -323,6 +394,15 @@ func (db *DB) Ingest(ctx context.Context, batch Batch) (BatchResult, error) {
 	}
 	if _, err = tx.ExecContext(ctx, `UPDATE stream_runtime SET watermark_ns=?,coverage_start_ns=?,accepted=?,rejected_invalid=?,rejected_late=?,rejected_group_limit=? WHERE stream=? AND version=1`, watermark, coverageStart, totals.Accepted, totals.RejectedInvalid, totals.RejectedLate, totals.RejectedGroupLimit, d.Name); err != nil {
 		return BatchResult{}, err
+	}
+	if batch.BatchID != "" {
+		encoded, err := json.Marshal(result)
+		if err != nil {
+			return BatchResult{}, err
+		}
+		if _, err = tx.ExecContext(ctx, `INSERT INTO ingest_batches(stream,batch_id,content_sha256,committed_ns,result_json) VALUES(?,?,?,?,?)`, d.Name, batch.BatchID, digest, wallNS, string(encoded)); err != nil {
+			return BatchResult{}, err
+		}
 	}
 	if err = tx.Commit(); err != nil {
 		return BatchResult{}, err

@@ -65,6 +65,8 @@ func classify(err error) (int, Problem) {
 		return 400, Problem{"sql", strings.TrimPrefix(err.Error(), rollupdb.ErrSQL.Error()+": ")}
 	case errors.Is(err, rollupdb.ErrDefinitionChange):
 		return 409, Problem{"definition_change", strings.TrimPrefix(err.Error(), rollupdb.ErrDefinitionChange.Error()+": ")}
+	case errors.Is(err, rollupdb.ErrBatchConflict):
+		return 409, Problem{"batch_conflict", "batch ID was already used for other observations; nothing was written"}
 	case errors.Is(err, rollupdb.ErrClockJump):
 		return 409, Problem{"clock_jump", "host clock is too far ahead of the stream's stored watermark; nothing was written"}
 	case errors.Is(err, rollupdb.ErrNumericOverflow):
@@ -248,6 +250,13 @@ func NewHandler(db *rollupdb.DB) http.Handler {
 		var batch rollupdb.Batch
 		if !decodeRequest(w, r, &batch, MaxIngestBody) {
 			return
+		}
+		if key := r.Header.Get("Idempotency-Key"); key != "" {
+			if batch.BatchID != "" && batch.BatchID != key {
+				problem(w, 400, "invalid_request", "Idempotency-Key and batch_id differ")
+				return
+			}
+			batch.BatchID = key
 		}
 		value, err := db.Ingest(r.Context(), batch)
 		if err != nil {

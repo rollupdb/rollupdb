@@ -18,7 +18,7 @@ import (
 
 const (
 	// FormatVersion identifies the on-disk schema, independently of releases.
-	FormatVersion = 4
+	FormatVersion = 5
 	applicationID = 0x524c4442 // RLDB
 )
 
@@ -30,7 +30,8 @@ var (
 	ErrStreamNotFound = errors.New("rollupdb: stream not found")
 	// ErrClockJump reports a clock reading too far ahead of a stream's stored
 	// watermark. Nothing was written. See WithMaxClockStep.
-	ErrClockJump = errors.New("rollupdb: clock jumped too far ahead of the stored watermark")
+	ErrBatchConflict = errors.New("rollupdb: batch ID already used for other observations")
+	ErrClockJump     = errors.New("rollupdb: clock jumped too far ahead of the stored watermark")
 )
 
 // DefaultMaxClockStep is how far the host clock may move past a stream's stored
@@ -54,6 +55,9 @@ type DB struct {
 	maxClockStep time.Duration
 	customClock  bool
 	stepSet      bool
+
+	// batchIDRetention is how long a batch ID is remembered (see Batch.BatchID).
+	batchIDRetention time.Duration
 }
 
 // Option configures a handle. Production defaults to time.Now.
@@ -82,6 +86,21 @@ func WithMaxClockStep(step time.Duration) Option {
 	return func(db *DB) error {
 		db.maxClockStep = max(step, 0)
 		db.stepSet = true
+		return nil
+	}
+}
+
+// DefaultBatchIDRetention is how long a batch ID is remembered by default.
+const DefaultBatchIDRetention = 7 * 24 * time.Hour
+
+// WithBatchIDRetention sets how long Ingest remembers a batch ID after the
+// batch commits, so a retry within that time is recognized and not counted
+// twice. Advance forgets older IDs. Zero or less keeps the default.
+func WithBatchIDRetention(d time.Duration) Option {
+	return func(db *DB) error {
+		if d > 0 {
+			db.batchIDRetention = d
+		}
 		return nil
 	}
 }
@@ -150,7 +169,7 @@ func Open(ctx context.Context, path string, options ...Option) (*DB, error) {
 	return open(ctx, abs, false, false, options...)
 }
 
-// Migrate explicitly upgrades a revision-1/2/3 file to revision 4 in one transaction.
+// Migrate explicitly upgrades a revision-1/2/3/4 file to revision 5 in one transaction.
 // Take a backup first. A current file is a no-op; unknown formats are refused.
 func Migrate(ctx context.Context, path string) error {
 	if path == "" {
@@ -237,7 +256,7 @@ func open(ctx context.Context, path string, fresh, upgrade bool, options ...Opti
 	if mode != "wal" {
 		return nil, fmt.Errorf("rollupdb: expected WAL journal mode, got %q", mode)
 	}
-	db := &DB{sql: s, path: path, now: time.Now}
+	db := &DB{sql: s, path: path, now: time.Now, batchIDRetention: DefaultBatchIDRetention}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("rollupdb: nil option")
@@ -288,6 +307,9 @@ PRAGMA user_version = 1;
 		return err
 	}
 	if _, err = tx.ExecContext(ctx, schemaV4); err != nil {
+		return err
+	}
+	if _, err = tx.ExecContext(ctx, schemaV5); err != nil {
 		return err
 	}
 	if _, err = tx.ExecContext(ctx, "INSERT INTO store_meta VALUES (1, ?, ?)", hex.EncodeToString(random[:]), time.Now().UTC().Format(time.RFC3339Nano)); err != nil {

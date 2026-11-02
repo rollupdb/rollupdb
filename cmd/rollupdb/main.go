@@ -31,7 +31,7 @@ func run(ctx context.Context, args []string, out io.Writer) (err error) {
 }
 
 func runWithInput(ctx context.Context, args []string, input io.Reader, out io.Writer) (err error) {
-	const usage = "Usage: rollupdb version | init FILE | migrate FILE | inspect FILE | snapshot FILE DEST | create-stream FILE DEFINITION.json | update-stream FILE DEFINITION.json | stream FILE NAME | stats FILE NAME | advance FILE [NAME] | ingest FILE BATCH.json | query FILE QUERY.json | sql FILE STATEMENT | ingest-ndjson FILE STREAM INPUT [--batch-size N] | serve FILE [--listen 127.0.0.1:7070] [--advance-every 1m]"
+	const usage = "Usage: rollupdb version | init FILE | migrate FILE | inspect FILE | snapshot FILE DEST | create-stream FILE DEFINITION.json | update-stream FILE DEFINITION.json | stream FILE NAME | stats FILE NAME | advance FILE [NAME] | ingest FILE BATCH.json | query FILE QUERY.json | sql FILE STATEMENT | ingest-ndjson FILE STREAM INPUT [--batch-size N] [--batch-id-prefix P] | serve FILE [--listen 127.0.0.1:7070] [--advance-every 1m]"
 	if len(args) == 1 && (args[0] == "version" || args[0] == "--version") {
 		_, err := fmt.Fprintln(out, "rollupdb "+rollupdb.Version)
 		return err
@@ -191,6 +191,7 @@ func importCommand(ctx context.Context, args []string, input io.Reader, out io.W
 	flags := flag.NewFlagSet("ingest-ndjson", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	batchSize := flags.Int("batch-size", transport.DefaultBatchSize, "records per transaction")
+	prefix := flags.String("batch-id-prefix", "", "name each batch PREFIX:FIRST_LINE so a rerun skips committed batches")
 	if err = flags.Parse(args[3:]); err != nil {
 		return err
 	}
@@ -231,7 +232,7 @@ func importCommand(ctx context.Context, args []string, input io.Reader, out io.W
 		}()
 	}
 	encoder := json.NewEncoder(out)
-	summary, importErr := transport.ImportNDJSON(ctx, db, args[1], input, *batchSize, func(r transport.BatchReceipt) error { return encoder.Encode(r) })
+	summary, importErr := transport.ImportNDJSONWithIDs(ctx, db, args[1], input, *batchSize, *prefix, func(r transport.BatchReceipt) error { return encoder.Encode(r) })
 	outputErr := encoder.Encode(summary)
 	return errors.Join(importErr, outputErr)
 }

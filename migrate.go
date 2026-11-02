@@ -47,6 +47,17 @@ const schemaV4 = `CREATE TABLE retention_frontiers (
 ) STRICT;
 PRAGMA user_version=4;`
 
+// Revision 5 remembers batch IDs, so a retried batch is recognized.
+const schemaV5 = `CREATE TABLE ingest_batches (
+ stream TEXT NOT NULL, batch_id TEXT NOT NULL,
+ content_sha256 TEXT NOT NULL CHECK(length(content_sha256) = 64),
+ committed_ns INTEGER NOT NULL,
+ result_json TEXT NOT NULL CHECK(json_valid(result_json)),
+ PRIMARY KEY(stream, batch_id)
+) STRICT;
+CREATE INDEX ingest_batches_time ON ingest_batches(stream, committed_ns);
+PRAGMA user_version=5;`
+
 func migrateCurrent(ctx context.Context, s *sql.DB, version int) error {
 	tx, err := s.BeginTx(ctx, nil)
 	if err != nil {
@@ -68,8 +79,13 @@ func migrateCurrent(ctx context.Context, s *sql.DB, version int) error {
 			return fmt.Errorf("migrate revision %d to 3: %w", version, err)
 		}
 	}
-	if _, err = tx.ExecContext(ctx, schemaV4); err != nil {
-		return fmt.Errorf("migrate revision %d to 4: %w", version, err)
+	if version < 4 {
+		if _, err = tx.ExecContext(ctx, schemaV4); err != nil {
+			return fmt.Errorf("migrate revision %d to 4: %w", version, err)
+		}
+	}
+	if _, err = tx.ExecContext(ctx, schemaV5); err != nil {
+		return fmt.Errorf("migrate revision %d to 5: %w", version, err)
 	}
 	return tx.Commit()
 }
