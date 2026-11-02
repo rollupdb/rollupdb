@@ -5,11 +5,13 @@ import (
 	"context"
 	"crypto/sha256"
 	"database/sql"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
+	"sort"
 	"time"
 	"unicode/utf8"
 )
@@ -97,25 +99,42 @@ func validBatchID(id string) bool {
 	return true
 }
 
-// batchDigest is the SHA-256 of a batch's stream, version and observations
-// in one fixed form, so a retry with the same content matches.
+// batchDigest is the SHA-256 of a batch's stream and observations in one
+// fixed form, so a retry with the same content matches. Times are compared as
+// instants, values by their exact bits (NaN and infinities included), and
+// dimensions as sorted pairs, so a nil map and an empty one are the same. The
+// version is left out: data is keyed at version 1 whatever version a sender
+// names, and a stream update between a send and its retry must not turn the
+// retry into a conflict.
 func batchDigest(batch Batch) string {
-	type obs struct {
-		T string            `json:"t"`
-		V float64           `json:"v"`
-		D map[string]string `json:"d"`
+	h := sha256.New()
+	field := func(s string) {
+		var n [8]byte
+		binary.BigEndian.PutUint64(n[:], uint64(len(s)))
+		h.Write(n[:])
+		h.Write([]byte(s))
 	}
-	list := make([]obs, len(batch.Observations))
-	for i, o := range batch.Observations {
-		list[i] = obs{o.Time.UTC().Format(time.RFC3339Nano), o.Value, o.Dimensions}
+	field(batch.Stream)
+	var n [8]byte
+	binary.BigEndian.PutUint64(n[:], uint64(len(batch.Observations)))
+	h.Write(n[:])
+	for _, o := range batch.Observations {
+		field(o.Time.UTC().Format(time.RFC3339Nano))
+		binary.BigEndian.PutUint64(n[:], math.Float64bits(o.Value))
+		h.Write(n[:])
+		keys := make([]string, 0, len(o.Dimensions))
+		for k := range o.Dimensions {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		binary.BigEndian.PutUint64(n[:], uint64(len(keys)))
+		h.Write(n[:])
+		for _, k := range keys {
+			field(k)
+			field(o.Dimensions[k])
+		}
 	}
-	b, _ := json.Marshal(struct {
-		S string `json:"s"`
-		N int    `json:"n"`
-		O []obs  `json:"o"`
-	}{batch.Stream, batch.Version, list})
-	sum := sha256.Sum256(b)
-	return hex.EncodeToString(sum[:])
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 type runtimeState struct {

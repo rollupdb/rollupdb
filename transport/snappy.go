@@ -19,7 +19,8 @@ func snappyDecode(src []byte, limit int) ([]byte, error) {
 		return nil, errSnappy
 	}
 	src = src[read:]
-	dst := make([]byte, 0, int(n))
+	// Grow as output appears rather than trusting the declared length up front.
+	dst := make([]byte, 0, min(int(n), 1<<20))
 	for len(src) > 0 {
 		tag := src[0]
 		var length, offset int

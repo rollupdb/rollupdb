@@ -24,6 +24,16 @@ import (
 const MaxRemoteWriteBody = 16 << 20
 const MaxRemoteWriteDecoded = 64 << 20
 
+// MaxRemoteWriteSeries and MaxRemoteWriteSamples cap one request after
+// decoding; Prometheus sends at most a few thousand samples per request by
+// default. Above either cap the request is refused with 400.
+const MaxRemoteWriteSeries = 1_000_000
+const MaxRemoteWriteSamples = 1_000_000
+
+// maxRemoteWriteInFlight bounds how many requests decode at once, and so the
+// memory they can take together; others wait their turn.
+const maxRemoteWriteInFlight = 2
+
 // RemoteWriteRoute is where Prometheus remote write 1.0 posts.
 const RemoteWriteRoute = "POST /api/v1/write"
 
@@ -107,10 +117,11 @@ type remoteWrite struct {
 	metrics map[string]RemoteWriteMetric
 	mu      sync.Mutex
 	stats   RemoteWriteStats
+	slots   chan struct{}
 }
 
 func newRemoteWrite(db *rollupdb.DB, m *RemoteWriteMap) *remoteWrite {
-	rw := &remoteWrite{db: db, metrics: map[string]RemoteWriteMetric{}}
+	rw := &remoteWrite{db: db, metrics: map[string]RemoteWriteMetric{}, slots: make(chan struct{}, maxRemoteWriteInFlight)}
 	for _, metric := range m.Metrics {
 		rw.metrics[metric.Metric] = metric
 	}
@@ -159,6 +170,13 @@ func (rw *remoteWrite) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		rw.fail(w, 415, "Content-Encoding must be snappy")
 		return
 	}
+	select {
+	case rw.slots <- struct{}{}:
+		defer func() { <-rw.slots }()
+	case <-r.Context().Done():
+		rw.fail(w, 503, "busy")
+		return
+	}
 	r.Body = http.MaxBytesReader(w, r.Body, MaxRemoteWriteBody)
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -191,12 +209,17 @@ func (rw *remoteWrite) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		rw.fail(w, 503, err.Error())
 		return
 	}
-	for i, batch := range batches {
-		// The ID depends only on the request body and the batch's place in
-		// it, so a retry of the same body replays instead of counting twice.
+	chunk := map[string]int{}
+	for _, batch := range batches {
+		// The ID depends only on the request body, the stream and the batch's
+		// place among that stream's batches, so a retry of the same body
+		// replays instead of counting twice, even if the map gained other
+		// streams in between.
+		k := chunk[batch.Stream]
+		chunk[batch.Stream]++
 		id := sha256.New()
 		id.Write(bodySum[:])
-		fmt.Fprintf(id, "\x00%s\x00%d", batch.Stream, i)
+		fmt.Fprintf(id, "\x00%s\x00%d", batch.Stream, k)
 		batch.BatchID = "rw:" + hex.EncodeToString(id.Sum(nil))
 		result, err := rw.db.Ingest(r.Context(), batch)
 		if err != nil {
@@ -219,12 +242,13 @@ func (rw *remoteWrite) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// remoteWriteStatus decides whether Prometheus should retry.
+// remoteWriteStatus decides whether Prometheus should retry. A stream that
+// isn't active yet and a refused clock jump can clear up, so they get 503 and
+// Prometheus keeps the samples and retries.
 func remoteWriteStatus(err error) (int, string) {
 	switch {
 	case errors.Is(err, rollupdb.ErrInvalidRequest), errors.Is(err, rollupdb.ErrBatchConflict),
-		errors.Is(err, rollupdb.ErrStreamNotFound), errors.Is(err, rollupdb.ErrStreamNotActive),
-		errors.Is(err, rollupdb.ErrClockJump), errors.Is(err, rollupdb.ErrNumericOverflow):
+		errors.Is(err, rollupdb.ErrStreamNotFound), errors.Is(err, rollupdb.ErrNumericOverflow):
 		_, p := classify(err)
 		return 400, p.Code + ": " + p.Message
 	default:
@@ -266,6 +290,8 @@ func (rw *remoteWrite) batches(ctx context.Context, series []timeSeries) ([]roll
 	sort.Strings(names)
 	var batches []rollupdb.Batch
 	for _, name := range names {
+		// Streams can't be deleted and the map was checked at start, so a
+		// failure here is a storage or shutdown error: 503, retry.
 		d, err := rw.db.Stream(ctx, name)
 		if err != nil {
 			return nil, stats, err
@@ -338,6 +364,7 @@ func protoField(b []byte) (num int, wire int, value uint64, data []byte, rest []
 // exemplars and native histograms are skipped.
 func decodeWriteRequest(b []byte) ([]timeSeries, error) {
 	var out []timeSeries
+	samples := 0
 	for len(b) > 0 {
 		num, wire, _, data, rest, err := protoField(b)
 		if err != nil {
@@ -350,17 +377,23 @@ func decodeWriteRequest(b []byte) ([]timeSeries, error) {
 		if wire != 2 {
 			return nil, errProto
 		}
-		ts, err := decodeTimeSeries(data)
+		if len(out) == MaxRemoteWriteSeries {
+			return nil, fmt.Errorf("request has more than %d series", MaxRemoteWriteSeries)
+		}
+		ts, err := decodeTimeSeries(data, MaxRemoteWriteSamples-samples)
 		if err != nil {
 			return nil, err
 		}
+		samples += len(ts.samples)
 		out = append(out, ts)
 	}
 	return out, nil
 }
 
-func decodeTimeSeries(b []byte) (timeSeries, error) {
-	ts := timeSeries{labels: map[string]string{}}
+// decodeTimeSeries reads one series, refusing more than room samples. The
+// labels map is made on the first label, so an empty series costs little.
+func decodeTimeSeries(b []byte, room int) (timeSeries, error) {
+	var ts timeSeries
 	for len(b) > 0 {
 		num, wire, _, data, rest, err := protoField(b)
 		if err != nil {
@@ -379,10 +412,16 @@ func decodeTimeSeries(b []byte) (timeSeries, error) {
 			if _, dup := ts.labels[name]; dup {
 				return ts, fmt.Errorf("protobuf: label %q repeated in one series", name)
 			}
+			if ts.labels == nil {
+				ts.labels = map[string]string{}
+			}
 			ts.labels[name] = value
 		case 2:
 			if wire != 2 {
 				return ts, errProto
+			}
+			if len(ts.samples) >= room {
+				return ts, fmt.Errorf("request has more than %d samples", MaxRemoteWriteSamples)
 			}
 			s, err := decodeSample(data)
 			if err != nil {

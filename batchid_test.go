@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"math"
 	"strings"
 	"testing"
 	"time"
@@ -223,5 +224,55 @@ func TestRevision4MigratesTo5(t *testing.T) {
 	}
 	if i, err := db2.Info(ctx); err != nil || i.FormatVersion != 5 {
 		t.Fatalf("inspect: %+v %v", i, err)
+	}
+}
+
+// Non-finite values hash by their bits, so other values under the same ID
+// are still refused; nil and empty dimensions are the same content.
+func TestBatchDigestEdgeCases(t *testing.T) {
+	at := time.Date(2026, 10, 17, 12, 0, 0, 0, time.UTC)
+	mk := func(v float64, dims map[string]string) Batch {
+		return Batch{Stream: "s", Version: 1, Observations: []Observation{{Time: at, Value: math.NaN(), Dimensions: dims}, {Time: at, Value: v, Dimensions: dims}}}
+	}
+	if batchDigest(mk(1, nil)) == batchDigest(mk(999, nil)) {
+		t.Fatal("batches with NaN and different values hash the same")
+	}
+	if batchDigest(mk(math.Inf(1), nil)) == batchDigest(mk(math.Inf(-1), nil)) {
+		t.Fatal("+Inf and -Inf hash the same")
+	}
+	if batchDigest(mk(1, nil)) != batchDigest(mk(1, map[string]string{})) {
+		t.Fatal("nil and empty dimensions hash differently")
+	}
+	a := mk(1, map[string]string{"a": "bc"})
+	b := mk(1, map[string]string{"ab": "c"})
+	if batchDigest(a) == batchDigest(b) {
+		t.Fatal("ambiguous dimension encoding")
+	}
+	v2 := mk(1, nil)
+	v2.Version = 2
+	if batchDigest(mk(1, nil)) != batchDigest(v2) {
+		t.Fatal("version changes the digest")
+	}
+}
+
+// A stream update between a send and its retry must not turn the retry into
+// a conflict.
+func TestBatchIDRetryAfterStreamUpdate(t *testing.T) {
+	ctx := context.Background()
+	db, now, d, _ := ingestionDB(t)
+	b := batchOf(d, observation(now.Add(-time.Second), 5, "web"))
+	b.BatchID = "before-update"
+	if _, err := db.Ingest(ctx, b); err != nil {
+		t.Fatal(err)
+	}
+	next := d
+	next.Version = 2
+	next.MaxGroups = d.MaxGroups + 1
+	if err := db.UpdateStream(ctx, next); err != nil {
+		t.Fatal(err)
+	}
+	b.Version = 2
+	if r, err := db.Ingest(ctx, b); err != nil || !r.Replayed {
+		t.Fatalf("retry after update: %+v %v", r, err)
 	}
 }

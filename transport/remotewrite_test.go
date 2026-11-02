@@ -293,3 +293,86 @@ func TestRemoteWriteMapChecks(t *testing.T) {
 		}
 	}
 }
+
+// snappyLiterals wraps raw bytes in a valid snappy block made only of
+// literals, enough to send hand-built protobuf bodies.
+func snappyLiterals(raw []byte) []byte {
+	out := binary.AppendUvarint(nil, uint64(len(raw)))
+	for len(raw) > 0 {
+		n := min(len(raw), 1<<16)
+		out = append(out, 62<<2, byte(n-1), byte((n-1)>>8), byte((n-1)>>16))
+		out = append(out, raw[:n]...)
+		raw = raw[n:]
+	}
+	return out
+}
+
+func TestRemoteWriteCapsSeriesAndSamples(t *testing.T) {
+	_, _, h, _ := remoteWriteFixture(t)
+	// Empty series, two bytes each: one past the series cap.
+	series := bytes.Repeat([]byte{0x0a, 0x00}, MaxRemoteWriteSeries+1)
+	if w := postWrite(t, h, snappyLiterals(series), nil); w.Code != 400 || !strings.Contains(w.Body.String(), "series") {
+		t.Fatalf("too many series: %d %s", w.Code, w.Body.String())
+	}
+	// One series with empty samples, one past the sample cap.
+	inner := bytes.Repeat([]byte{0x12, 0x00}, MaxRemoteWriteSamples+1)
+	one := append([]byte{0x0a}, binary.AppendUvarint(nil, uint64(len(inner)))...)
+	one = append(one, inner...)
+	if w := postWrite(t, h, snappyLiterals(one), nil); w.Code != 400 || !strings.Contains(w.Body.String(), "samples") {
+		t.Fatalf("too many samples: %d %s", w.Code, w.Body.String())
+	}
+	// Exactly at the series cap is fine (nothing mapped, nothing stored).
+	if w := postWrite(t, h, snappyLiterals(series[:2*MaxRemoteWriteSeries]), nil); w.Code != 204 {
+		t.Fatalf("at the cap: %d %s", w.Code, w.Body.String())
+	}
+}
+
+// Adding a stream to the map between a failed request and its retry does not
+// change the IDs of the batches that already committed.
+func TestRemoteWriteRetryAfterMapGrows(t *testing.T) {
+	db, d, h, _ := remoteWriteFixture(t)
+	body := mustRead(t, "basic")
+	if w := postWrite(t, h, body, nil); w.Code != 204 {
+		t.Fatalf("first: %d", w.Code)
+	}
+	ctx := context.Background()
+	extra := rollupdb.Definition{Name: "aaa_goroutines", Version: 1, EffectiveAt: d.EffectiveAt, Dimensions: []string{"service"}, Statistics: []string{"count"}, MaxGroups: 10, Tiers: d.Tiers}
+	if err := db.CreateStream(ctx, extra); err != nil {
+		t.Fatal(err)
+	}
+	grown := &RemoteWriteMap{Metrics: []RemoteWriteMetric{
+		{Metric: "http_requests_total", Stream: "requests", Dimensions: map[string]string{"service": "job", "host": "instance"}},
+		{Metric: "go_goroutines", Stream: "aaa_goroutines", Dimensions: map[string]string{"service": "job"}},
+	}}
+	if err := grown.check(ctx, db); err != nil {
+		t.Fatal(err)
+	}
+	h2 := NewHandler(db, WithRemoteWrite(grown))
+	if w := postWrite(t, h2, body, nil); w.Code != 204 {
+		t.Fatalf("retry: %d %s", w.Code, w.Body.String())
+	}
+	if s := rwStats(t, h2); s.ReplayedBatches != 1 || s.Accepted != 1 {
+		t.Fatalf("retry stats: %+v", s)
+	}
+	if st := status(t, db, d.Name); st.Accepted != 3 {
+		t.Fatalf("requests counted %d, want 3", st.Accepted)
+	}
+}
+
+// A stream that isn't active yet is a reason to retry later, not to drop.
+func TestRemoteWriteInactiveStreamIsRetryable(t *testing.T) {
+	now := time.UnixMilli(fixtureT0 + 20000).UTC()
+	db, err := rollupdb.Create(context.Background(), filepath.Join(t.TempDir(), "rw.rollupdb"), rollupdb.WithClock(func() time.Time { return now }))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	d := rollupdb.Definition{Name: "requests", Version: 1, EffectiveAt: now.Truncate(24 * time.Hour).Add(48 * time.Hour), Dimensions: []string{"service", "host"}, Statistics: []string{"count"}, MaxGroups: 10, Tiers: []rollupdb.Tier{{WidthSeconds: 1, RetainSeconds: 3600, GraceSeconds: 120}, {WidthSeconds: 60, RetainSeconds: 0, GraceSeconds: 120}}}
+	if err = db.CreateStream(context.Background(), d); err != nil {
+		t.Fatal(err)
+	}
+	m := &RemoteWriteMap{Metrics: []RemoteWriteMetric{{Metric: "http_requests_total", Stream: "requests", Dimensions: map[string]string{"service": "job", "host": "instance"}}}}
+	if w := postWrite(t, NewHandler(db, WithRemoteWrite(m)), mustRead(t, "basic"), nil); w.Code != 503 {
+		t.Fatalf("inactive stream: %d %s", w.Code, w.Body.String())
+	}
+}
