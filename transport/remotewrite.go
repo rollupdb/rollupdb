@@ -58,6 +58,7 @@ type RemoteWriteStats struct {
 	Submitted       int64 `json:"submitted"`
 	Unmapped        int64 `json:"unmapped"`
 	StaleMarkers    int64 `json:"stale_markers"`
+	Inactive        int64 `json:"inactive"`
 	ReplayedBatches int64 `json:"replayed_batches"`
 	rollupdb.Counters
 	BadRequests    int64 `json:"bad_requests"`
@@ -115,6 +116,7 @@ const staleNaN = 0x7ff0000000000002
 type remoteWrite struct {
 	db      *rollupdb.DB
 	metrics map[string]RemoteWriteMetric
+	keep    map[string]bool // labels worth decoding: __name__ and every mapped label
 	mu      sync.Mutex
 	stats   RemoteWriteStats
 	slots   chan struct{}
@@ -122,8 +124,12 @@ type remoteWrite struct {
 
 func newRemoteWrite(db *rollupdb.DB, m *RemoteWriteMap) *remoteWrite {
 	rw := &remoteWrite{db: db, metrics: map[string]RemoteWriteMetric{}, slots: make(chan struct{}, maxRemoteWriteInFlight)}
+	rw.keep = map[string]bool{"__name__": true}
 	for _, metric := range m.Metrics {
 		rw.metrics[metric.Metric] = metric
+		for _, label := range metric.Dimensions {
+			rw.keep[label] = true
+		}
 	}
 	return rw
 }
@@ -193,7 +199,7 @@ func (rw *remoteWrite) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		rw.fail(w, 400, err.Error())
 		return
 	}
-	series, err := decodeWriteRequest(decoded)
+	series, err := decodeWriteRequest(decoded, rw.keep)
 	if err != nil {
 		rw.fail(w, 400, err.Error())
 		return
@@ -204,6 +210,7 @@ func (rw *remoteWrite) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.Samples += stats.Samples
 		s.Unmapped += stats.Unmapped
 		s.StaleMarkers += stats.StaleMarkers
+		s.Inactive += stats.Inactive
 	})
 	if err != nil {
 		rw.fail(w, 503, err.Error())
@@ -242,13 +249,16 @@ func (rw *remoteWrite) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// remoteWriteStatus decides whether Prometheus should retry. A stream that
-// isn't active yet and a refused clock jump can clear up, so they get 503 and
-// Prometheus keeps the samples and retries.
+// remoteWriteStatus decides whether Prometheus should retry. A refused clock
+// jump can clear up once the clock is fixed, so it gets 503 and Prometheus
+// keeps the samples. Samples from before a stream's effective time are
+// skipped in batches, since no retry could ever store them; ErrStreamNotActive
+// can then only come from samples dated in the future, which gets 400.
 func remoteWriteStatus(err error) (int, string) {
 	switch {
 	case errors.Is(err, rollupdb.ErrInvalidRequest), errors.Is(err, rollupdb.ErrBatchConflict),
-		errors.Is(err, rollupdb.ErrStreamNotFound), errors.Is(err, rollupdb.ErrNumericOverflow):
+		errors.Is(err, rollupdb.ErrStreamNotFound), errors.Is(err, rollupdb.ErrStreamNotActive),
+		errors.Is(err, rollupdb.ErrNumericOverflow):
 		_, p := classify(err)
 		return 400, p.Code + ": " + p.Message
 	default:
@@ -257,7 +267,7 @@ func remoteWriteStatus(err error) (int, string) {
 	}
 }
 
-type batchStats struct{ Samples, Unmapped, StaleMarkers int64 }
+type batchStats struct{ Samples, Unmapped, StaleMarkers, Inactive int64 }
 
 // batches turns series into per-stream batches in a fixed order: streams by
 // name, samples in request order, split every MaxBatchSize observations.
@@ -296,7 +306,17 @@ func (rw *remoteWrite) batches(ctx context.Context, series []timeSeries) ([]roll
 		if err != nil {
 			return nil, stats, err
 		}
-		obs := byStream[name]
+		// Samples before the stream's effective time can never be stored; skip
+		// and count them rather than fail (and stall) the whole request.
+		all := byStream[name]
+		obs := all[:0:0]
+		for _, o := range all {
+			if o.Time.Before(d.EffectiveAt) {
+				stats.Inactive++
+				continue
+			}
+			obs = append(obs, o)
+		}
 		for len(obs) > 0 {
 			n := min(len(obs), rollupdb.MaxBatchSize)
 			batches = append(batches, rollupdb.Batch{Stream: name, Version: d.Version, Observations: obs[:n]})
@@ -362,7 +382,9 @@ func protoField(b []byte) (num int, wire int, value uint64, data []byte, rest []
 // decodeWriteRequest reads the fields of prometheus.WriteRequest that carry
 // float samples: timeseries (1) with labels (1) and samples (2). Metadata,
 // exemplars and native histograms are skipped.
-func decodeWriteRequest(b []byte) ([]timeSeries, error) {
+// keep names the labels to store; other labels are skipped without
+// allocating, so a request full of unused labels costs little. nil keeps all.
+func decodeWriteRequest(b []byte, keep map[string]bool) ([]timeSeries, error) {
 	var out []timeSeries
 	samples := 0
 	for len(b) > 0 {
@@ -380,7 +402,7 @@ func decodeWriteRequest(b []byte) ([]timeSeries, error) {
 		if len(out) == MaxRemoteWriteSeries {
 			return nil, fmt.Errorf("request has more than %d series", MaxRemoteWriteSeries)
 		}
-		ts, err := decodeTimeSeries(data, MaxRemoteWriteSamples-samples)
+		ts, err := decodeTimeSeries(data, MaxRemoteWriteSamples-samples, keep)
 		if err != nil {
 			return nil, err
 		}
@@ -392,7 +414,7 @@ func decodeWriteRequest(b []byte) ([]timeSeries, error) {
 
 // decodeTimeSeries reads one series, refusing more than room samples. The
 // labels map is made on the first label, so an empty series costs little.
-func decodeTimeSeries(b []byte, room int) (timeSeries, error) {
+func decodeTimeSeries(b []byte, room int, keep map[string]bool) (timeSeries, error) {
 	var ts timeSeries
 	for len(b) > 0 {
 		num, wire, _, data, rest, err := protoField(b)
@@ -405,10 +427,14 @@ func decodeTimeSeries(b []byte, room int) (timeSeries, error) {
 			if wire != 2 {
 				return ts, errProto
 			}
-			name, value, err := decodeLabel(data)
+			rawName, rawValue, err := decodeLabel(data)
 			if err != nil {
 				return ts, err
 			}
+			if keep != nil && !keep[string(rawName)] {
+				continue
+			}
+			name, value := string(rawName), string(rawValue)
 			if _, dup := ts.labels[name]; dup {
 				return ts, fmt.Errorf("protobuf: label %q repeated in one series", name)
 			}
@@ -433,23 +459,23 @@ func decodeTimeSeries(b []byte, room int) (timeSeries, error) {
 	return ts, nil
 }
 
-func decodeLabel(b []byte) (name, value string, err error) {
+func decodeLabel(b []byte) (name, value []byte, err error) {
 	for len(b) > 0 {
 		num, wire, _, data, rest, e := protoField(b)
 		if e != nil {
-			return "", "", e
+			return nil, nil, e
 		}
 		b = rest
 		if num != 1 && num != 2 {
 			continue
 		}
 		if wire != 2 {
-			return "", "", errProto
+			return nil, nil, errProto
 		}
 		if num == 1 {
-			name = string(data)
+			name = data
 		} else {
-			value = string(data)
+			value = data
 		}
 	}
 	return name, value, nil

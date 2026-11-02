@@ -88,7 +88,7 @@ func TestDecodeFixtures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	series, err := decodeWriteRequest(decoded)
+	series, err := decodeWriteRequest(decoded, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +110,7 @@ func TestDecodeFixtures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	series, err = decodeWriteRequest(decoded)
+	series, err = decodeWriteRequest(decoded, nil)
 	if err != nil || len(series) != 1 || len(series[0].samples) != 12000 {
 		t.Fatalf("large: %d %v", len(series), err)
 	}
@@ -123,9 +123,9 @@ func TestDecodeFixtures(t *testing.T) {
 	// (here the trailing metadata) is refused.
 	small, _ := snappyDecode(mustRead(t, "basic"), MaxRemoteWriteDecoded)
 	for cut := 1; cut < len(small); cut++ {
-		_, _ = decodeWriteRequest(small[:cut])
+		_, _ = decodeWriteRequest(small[:cut], nil)
 	}
-	if _, err := decodeWriteRequest(small[:len(small)-1]); err == nil {
+	if _, err := decodeWriteRequest(small[:len(small)-1], nil); err == nil {
 		t.Fatal("request cut inside its last field was accepted")
 	}
 }
@@ -359,8 +359,9 @@ func TestRemoteWriteRetryAfterMapGrows(t *testing.T) {
 	}
 }
 
-// A stream that isn't active yet is a reason to retry later, not to drop.
-func TestRemoteWriteInactiveStreamIsRetryable(t *testing.T) {
+// Samples from before a stream's effective time can never be stored, so they
+// are skipped and counted instead of stalling Prometheus with retries.
+func TestRemoteWriteSkipsSamplesBeforeEffectiveTime(t *testing.T) {
 	now := time.UnixMilli(fixtureT0 + 20000).UTC()
 	db, err := rollupdb.Create(context.Background(), filepath.Join(t.TempDir(), "rw.rollupdb"), rollupdb.WithClock(func() time.Time { return now }))
 	if err != nil {
@@ -372,7 +373,26 @@ func TestRemoteWriteInactiveStreamIsRetryable(t *testing.T) {
 		t.Fatal(err)
 	}
 	m := &RemoteWriteMap{Metrics: []RemoteWriteMetric{{Metric: "http_requests_total", Stream: "requests", Dimensions: map[string]string{"service": "job", "host": "instance"}}}}
-	if w := postWrite(t, NewHandler(db, WithRemoteWrite(m)), mustRead(t, "basic"), nil); w.Code != 503 {
+	h := NewHandler(db, WithRemoteWrite(m))
+	if w := postWrite(t, h, mustRead(t, "basic"), nil); w.Code != 204 {
 		t.Fatalf("inactive stream: %d %s", w.Code, w.Body.String())
+	}
+	if s := rwStats(t, h); s.Inactive != 3 || s.Submitted != 0 || s.StaleMarkers != 1 {
+		t.Fatalf("stats: %+v", s)
+	}
+}
+
+// Labels no map entry uses are skipped while decoding.
+func TestRemoteWriteKeepsOnlyMappedLabels(t *testing.T) {
+	decoded, err := snappyDecode(mustRead(t, "basic"), MaxRemoteWriteDecoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	series, err := decodeWriteRequest(decoded, map[string]bool{"__name__": true, "job": true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if l := series[0].labels; len(l) != 2 || l["job"] != "api" || l["__name__"] != "http_requests_total" {
+		t.Fatalf("labels: %v", l)
 	}
 }
