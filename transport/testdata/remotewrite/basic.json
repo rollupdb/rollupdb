@@ -1,0 +1,25 @@
+{
+ "observations": [
+  {
+   "instance": "a:9090",
+   "job": "api",
+   "time_ms": 1792929720000,
+   "value": 1.0
+  },
+  {
+   "instance": "a:9090",
+   "job": "api",
+   "time_ms": 1792929721000,
+   "value": 2.5
+  },
+  {
+   "instance": "",
+   "job": "web",
+   "time_ms": 1792929720500,
+   "value": 7.0
+  }
+ ],
+ "samples": 5,
+ "stale_markers": 1,
+ "unmapped": 1
+}
