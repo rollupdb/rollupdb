@@ -69,9 +69,53 @@ the whole procedure and the checks to run afterwards.
   and the reference were updated for 0.4.0, with a release post and a fifth
   diagram (sql-query.png).
 
-## Next
+## In progress: RollupDB 0.5 (softdev-plan item 31, approved by YK 2026-11-02)
 
-Nothing agreed yet. Ask the owner before any feature work after 0.4.
+What and why: a retried batch is counted twice today (INTERFACES.md tells
+users not to retry blindly); a killed snapshot leaves a half-written file
+under the final name; and metrics people already have in Prometheus can't
+reach RollupDB without a custom bridge.
+
+Design decisions:
+- Phase A1, idempotent batch IDs: `Batch.BatchID` (`batch_id`, optional,
+  1..128 printable ASCII). The ID, a SHA-256 of the batch's content and its
+  BatchResult are stored in a new `ingest_batches` table in the same
+  transaction as the data. The same ID again with the same content returns
+  the stored result with `"replayed": true` and changes nothing; with other
+  content it is refused (`ErrBatchConflict`, HTTP 409 `batch_conflict`).
+  IDs are kept 7 days by default (`WithBatchIDRetention`), pruned by
+  Advance. CLI: `ingest-ndjson --batch-id-prefix P` names each batch
+  `P:<from_line>`, so rerunning the same input skips what committed. HTTP:
+  `batch_id` in the body or an `Idempotency-Key` header.
+- New table means format revision 5: Open refuses revision 4 until
+  `migrate` (the existing rule, now 1/2/3/4 to 5, one transaction).
+- Phase A2, atomic snapshot: VACUUM INTO a hidden temp file beside the
+  destination, fsync it, publish it with a hard link (refuses to overwrite,
+  atomically), remove the temp, fsync the directory. Where hard links don't
+  work, a rename after checking the name is still free. A killed snapshot
+  leaves only the temp file, never a partial file under the final name.
+- Phase B, Prometheus remote-write 1.0: `serve --remote-write MAP.json`
+  enables `POST /api/v1/write` (snappy-compressed protobuf WriteRequest,
+  decoded by hand, no new dependency). The map file names, per metric, the
+  stream and which labels become which dimensions; unmapped metrics and
+  stale markers are skipped and counted. Each request's batches get IDs
+  from the body's SHA-256, so Prometheus's retries after a 5xx are not
+  counted twice. 204 on success, 400 for bad input (no retry), 5xx when it
+  should retry. Remote-write 2.0 gets 415.
+- Upkeep: README install section; refresh the 0.1-era scope docs
+  (RELEASE_CANDIDATE.md) and the target matrix line.
+- Version 0.5.0.
+
+Steps:
+1. [ ] A1 batch IDs, revision 5 and migrate, CLI and HTTP, tests.
+2. [ ] A2 atomic snapshot, tests (including a killed snapshot).
+3. [ ] B remote-write: snappy and protobuf decoding (local tests), map
+   file, endpoint, tests with real Prometheus-encoded payloads.
+4. [ ] Docs and upkeep.
+5. [ ] Independent review (at most two rounds), fixes, fresh test/results.
+6. [ ] 0.5.0 released by the workflow, downloads checked.
+7. [ ] rollupdb.com post with its own SVG, pages; softdevstudio.com note;
+   softdev-plan log row.
 
 ## Working here
 
