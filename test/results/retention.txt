@@ -1,6 +1,6 @@
 # Retention: 20,000 observations rolled up, five years advanced, snapshot reopened
-# recorded 2026-10-17 18:26 UTC with go1.27.2 linux/amd64
-# Linux 6.17.0-1022-azure, AMD EPYC 9V74 80-Core Processor, 4 CPUs
+# recorded 2026-11-02 10:56 UTC with go1.27.2 linux/amd64
+# Linux 7.0.0-1017-azure, AMD EPYC 7763 64-Core Processor, 4 CPUs
 # command: go run ./examples/retention -n 20000
 
 {
@@ -9,10 +9,10 @@
   "observations": 20000,
   "simulated_years": 5,
   "serialized_input_bytes": 1602117,
-  "fine_snapshot_bytes": 299008,
-  "retained_snapshot_bytes": 53248,
-  "raw_to_retained_ratio": 30.08783428485577,
-  "fine_to_retained_ratio": 5.615384615384615,
+  "fine_snapshot_bytes": 311296,
+  "retained_snapshot_bytes": 65536,
+  "raw_to_retained_ratio": 24.446365356445312,
+  "fine_to_retained_ratio": 4.75,
   "before_buckets": 120,
   "advance": {
     "observed_through_inclusive": "2031-10-17T00:00:00Z",
@@ -88,22 +88,22 @@
       },
       {
         "rank": 0.5,
-        "value": 0.527925,
+        "value": 0.524925,
         "approximate": true
       },
       {
         "rank": 0.9,
-        "value": 0.947725,
+        "value": 0.946575,
         "approximate": true
       },
       {
         "rank": 0.95,
-        "value": 111.7225,
+        "value": 0.998525,
         "approximate": true
       },
       {
         "rank": 0.99,
-        "value": 801.1225,
+        "value": 785.8225,
         "approximate": true
       },
       {
@@ -137,43 +137,43 @@
     },
     {
       "rank": 0.5,
-      "estimate": 0.527925,
+      "estimate": 0.524925,
       "exact_nearest_rank": 0.526325,
-      "rank_low": 0.5015,
-      "rank_high": 0.50155,
-      "normalized_rank_error_observed": 0.0014999999999999458,
-      "absolute_value_error": 0.0015999999999999348,
-      "relative_value_error": 0.00303994680093086
+      "rank_low": 0.49865,
+      "rank_high": 0.4987,
+      "normalized_rank_error_observed": 0.0013000000000000234,
+      "absolute_value_error": 0.0014000000000000679,
+      "relative_value_error": 0.0026599534508147393
     },
     {
       "rank": 0.9,
-      "estimate": 0.947725,
+      "estimate": 0.946575,
       "exact_nearest_rank": 0.947375,
-      "rank_low": 0.9003,
-      "rank_high": 0.90035,
-      "normalized_rank_error_observed": 0.00029999999999996696,
-      "absolute_value_error": 0.0003500000000000725,
-      "relative_value_error": 0.00036944187887591766
+      "rank_low": 0.8992,
+      "rank_high": 0.89925,
+      "normalized_rank_error_observed": 0.0007500000000000284,
+      "absolute_value_error": 0.0007999999999999119,
+      "relative_value_error": 0.0008444385802875439
     },
     {
       "rank": 0.95,
-      "estimate": 111.7225,
+      "estimate": 0.998525,
       "exact_nearest_rank": 0.999975,
-      "rank_low": 0.95065,
-      "rank_high": 0.9507,
-      "normalized_rank_error_observed": 0.0006500000000000394,
-      "absolute_value_error": 110.72252499999999,
-      "relative_value_error": 110.7252931323283
+      "rank_low": 0.94855,
+      "rank_high": 0.9486,
+      "normalized_rank_error_observed": 0.0013999999999999568,
+      "absolute_value_error": 0.0014499999999999513,
+      "relative_value_error": 0.001450036250906224
     },
     {
       "rank": 0.99,
-      "estimate": 801.1225,
+      "estimate": 785.8225,
       "exact_nearest_rank": 819.1225,
-      "rank_low": 0.98895,
-      "rank_high": 0.989,
-      "normalized_rank_error_observed": 0.0010000000000000009,
-      "absolute_value_error": 18,
-      "relative_value_error": 0.021974735158660642
+      "rank_low": 0.9881,
+      "rank_high": 0.98815,
+      "normalized_rank_error_observed": 0.0018500000000000183,
+      "absolute_value_error": 33.299999999999955,
+      "relative_value_error": 0.040653260043522134
     },
     {
       "rank": 1,
