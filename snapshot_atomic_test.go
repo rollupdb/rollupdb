@@ -225,7 +225,8 @@ func TestKilledSnapshotLeavesNoPartialDestination(t *testing.T) {
 				t.Fatal(err)
 			}
 			for _, name := range dirNames(t, dir) {
-				if !strings.HasPrefix(name, ".snap.rollupdb.") || !strings.HasSuffix(name, ".tmp") {
+				// The hidden temp file, and SQLite's journal for it if VACUUM was cut short.
+				if !strings.HasPrefix(name, ".snap.rollupdb.") || !(strings.HasSuffix(name, ".tmp") || strings.HasSuffix(name, ".tmp-journal")) {
 					t.Fatalf("unexpected file after kill: %s", name)
 				}
 			}
