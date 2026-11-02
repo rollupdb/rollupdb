@@ -346,8 +346,10 @@ func (db *DB) Info(ctx context.Context) (Info, error) {
 }
 
 // Snapshot exports a consistent, compact database into a new destination file.
-// Existing destinations are never overwritten. The destination must not be used
-// until this call succeeds. A process crash can leave an incomplete destination.
+// Existing destinations are never overwritten. The copy is written to a hidden
+// temporary file in the destination's folder, synced, and only then published
+// under the destination name, so a crash or kill at any point leaves either no
+// destination or a complete one (plus, at worst, a leftover hidden temp file).
 func (db *DB) Snapshot(ctx context.Context, destination string) (err error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -361,32 +363,80 @@ func (db *DB) Snapshot(ctx context.Context, destination string) (err error) {
 	if err != nil {
 		return err
 	}
-	f, err := os.OpenFile(abs, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+	if _, err = os.Lstat(abs); err == nil {
+		return fmt.Errorf("reserve snapshot: %w", &os.PathError{Op: "snapshot", Path: abs, Err: os.ErrExist})
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("reserve snapshot: %w", err)
+	}
+	dir, base := filepath.Split(abs)
+	tmp, err := os.CreateTemp(dir, "."+base+".*.tmp")
 	if err != nil {
 		return fmt.Errorf("reserve snapshot: %w", err)
 	}
-	defer func() {
-		if err != nil {
-			_ = os.Remove(abs)
-		}
-	}()
-	if err = f.Close(); err != nil {
+	tmpPath := tmp.Name()
+	defer func() { _ = os.Remove(tmpPath) }()
+	if err = tmp.Close(); err != nil {
 		return err
 	}
 	// Bind the filename; quotes, question marks and URI-like strings are data.
-	if _, err = db.sql.ExecContext(ctx, "VACUUM main INTO ?", abs); err != nil {
+	// VACUUM INTO accepts an existing empty file.
+	if _, err = db.sql.ExecContext(ctx, "VACUUM main INTO ?", tmpPath); err != nil {
 		return fmt.Errorf("snapshot: %w", err)
 	}
-	f, err = os.OpenFile(abs, os.O_RDWR, 0)
+	if err = syncFile(tmpPath); err != nil {
+		return fmt.Errorf("snapshot: %w", err)
+	}
+	if hook, ok := ctx.Value(snapshotBeforePublishKey{}).(func()); ok {
+		hook()
+	}
+	if err = ctx.Err(); err != nil {
+		return err
+	}
+	if err = publish(tmpPath, abs); err != nil {
+		return fmt.Errorf("publish snapshot: %w", err)
+	}
+	// The name is published; a failed directory sync can't undo that, but the
+	// caller hears about it.
+	if err = syncDir(dir); err != nil {
+		return fmt.Errorf("snapshot published but its folder did not sync: %w", err)
+	}
+	return nil
+}
+
+// snapshotBeforePublishKey lets tests stop a snapshot between writing the
+// temporary file and publishing it.
+type snapshotBeforePublishKey struct{}
+
+func syncFile(path string) error {
+	f, err := os.OpenFile(path, os.O_RDWR, 0)
 	if err != nil {
 		return err
 	}
 	err = f.Sync()
-	closeErr := f.Close()
-	if err == nil {
+	if closeErr := f.Close(); err == nil {
 		err = closeErr
 	}
 	return err
+}
+
+// publish gives tmp the name dst without ever replacing an existing dst. A hard
+// link fails atomically if dst exists; where links aren't supported, a rename
+// after checking that dst is still free is the fallback (a writer racing for
+// the same name in that window could be replaced).
+func publish(tmp, dst string) error {
+	err := os.Link(tmp, dst)
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, os.ErrExist) {
+		return err
+	}
+	if _, statErr := os.Lstat(dst); statErr == nil {
+		return &os.PathError{Op: "publish", Path: dst, Err: os.ErrExist}
+	} else if !errors.Is(statErr, os.ErrNotExist) {
+		return statErr
+	}
+	return os.Rename(tmp, dst)
 }
 
 // Close closes the handle. Repeated calls succeed. A clean last-connection close

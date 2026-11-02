@@ -31,7 +31,7 @@ func run(ctx context.Context, args []string, out io.Writer) (err error) {
 }
 
 func runWithInput(ctx context.Context, args []string, input io.Reader, out io.Writer) (err error) {
-	const usage = "Usage: rollupdb version | init FILE | migrate FILE | inspect FILE | snapshot FILE DEST | create-stream FILE DEFINITION.json | update-stream FILE DEFINITION.json | stream FILE NAME | stats FILE NAME | advance FILE [NAME] | ingest FILE BATCH.json | query FILE QUERY.json | sql FILE STATEMENT | ingest-ndjson FILE STREAM INPUT [--batch-size N] [--batch-id-prefix P] | serve FILE [--listen 127.0.0.1:7070] [--advance-every 1m]"
+	const usage = "Usage: rollupdb version | init FILE | migrate FILE | inspect FILE | snapshot FILE DEST | create-stream FILE DEFINITION.json | update-stream FILE DEFINITION.json | stream FILE NAME | stats FILE NAME | advance FILE [NAME] | ingest FILE BATCH.json | query FILE QUERY.json | sql FILE STATEMENT | ingest-ndjson FILE STREAM INPUT [--batch-size N] [--batch-id-prefix P] | serve FILE [--listen 127.0.0.1:7070] [--advance-every 1m] [--remote-write MAP.json]"
 	if len(args) == 1 && (args[0] == "version" || args[0] == "--version") {
 		_, err := fmt.Fprintln(out, "rollupdb "+rollupdb.Version)
 		return err
@@ -239,12 +239,13 @@ func importCommand(ctx context.Context, args []string, input io.Reader, out io.W
 
 func serveCommand(ctx context.Context, args []string, out io.Writer) (err error) {
 	if len(args) < 1 {
-		return errors.New("serve expects FILE [--listen ADDRESS] [--advance-every DURATION]")
+		return errors.New("serve expects FILE [--listen ADDRESS] [--advance-every DURATION] [--remote-write MAP.json]")
 	}
 	flags := flag.NewFlagSet("serve", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	address := flags.String("listen", "127.0.0.1:7070", "literal loopback IP and port")
 	advanceEvery := flags.Duration("advance-every", time.Minute, "how often to roll up every stream; 0 turns it off")
+	remoteWrite := flags.String("remote-write", "", "map file enabling Prometheus remote write at POST /api/v1/write")
 	if err = flags.Parse(args[1:]); err != nil {
 		return err
 	}
@@ -268,15 +269,26 @@ func serveCommand(ctx context.Context, args []string, out io.Writer) (err error)
 		return err
 	}
 	defer func() { err = errors.Join(err, db.Close()) }()
+	var handlerOptions []transport.HandlerOption
+	remoteWriteRoute := ""
+	if *remoteWrite != "" {
+		m, err := transport.LoadRemoteWriteMap(ctx, db, *remoteWrite)
+		if err != nil {
+			return err
+		}
+		handlerOptions = append(handlerOptions, transport.WithRemoteWrite(m))
+		remoteWriteRoute = "/api/v1/write"
+	}
 	log := &lineWriter{w: out}
 	if err = log.encode(struct {
 		Listening    string `json:"listening"`
 		AdvanceEvery string `json:"advance_every"`
-	}{listener.Addr().String(), advanceEvery.String()}); err != nil {
+		RemoteWrite  string `json:"remote_write,omitempty"`
+	}{listener.Addr().String(), advanceEvery.String(), remoteWriteRoute}); err != nil {
 		return err
 	}
 	if *advanceEvery == 0 {
-		return transport.Serve(ctx, db, listener)
+		return transport.Serve(ctx, db, listener, handlerOptions...)
 	}
 	// The schedule stops when the server does: Serve returns only after
 	// shutdown, and cancelling scheduleCtx then ends RunRetention before db
@@ -300,7 +312,7 @@ func serveCommand(ctx context.Context, args []string, out io.Writer) (err error)
 			}{"advance", r.Stream, r.Result})
 		})
 	}()
-	err = transport.Serve(ctx, db, listener)
+	err = transport.Serve(ctx, db, listener, handlerOptions...)
 	stopSchedule()
 	<-scheduled
 	return err

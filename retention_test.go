@@ -593,9 +593,10 @@ func TestRevision3MigrationPreservesPersistedSketchBytes(t *testing.T) {
 	if err = db.sql.QueryRow(`SELECT sketch FROM buckets WHERE stream=?`, d.Name).Scan(&encoded); err != nil {
 		t.Fatal(err)
 	}
-	// Revision 4 adds only the frontier table. Remove it to construct the exact
-	// previous schema with real persisted sketch state rather than invented bytes.
-	if _, err = db.sql.Exec(`DROP TABLE retention_frontiers; PRAGMA user_version=3;`); err != nil {
+	// Revision 4 adds only the frontier table and revision 5 only the batch
+	// table. Remove both to construct the exact revision-3 schema with real
+	// persisted sketch state rather than invented bytes.
+	if _, err = db.sql.Exec(`DROP TABLE ingest_batches; DROP TABLE retention_frontiers; PRAGMA user_version=3;`); err != nil {
 		t.Fatal(err)
 	}
 	if err = db.Close(); err != nil {

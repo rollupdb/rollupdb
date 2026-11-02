@@ -125,8 +125,17 @@ func localHost(host string) bool {
 // NewHandler is intended for a loopback listener, not Internet exposure. Browser
 // Origin requests and nonlocal Host values are refused; no CORS is enabled.
 // The caller owns db and must keep it open until all handlers have stopped.
-func NewHandler(db *rollupdb.DB) http.Handler {
+func NewHandler(db *rollupdb.DB, options ...HandlerOption) http.Handler {
+	var config handlerConfig
+	for _, option := range options {
+		option(&config)
+	}
 	mux := http.NewServeMux()
+	if config.remoteWrite != nil {
+		rw := newRemoteWrite(db, config.remoteWrite)
+		mux.Handle(RemoteWriteRoute, rw)
+		mux.HandleFunc("GET /api/v1/write/stats", rw.statsHandler)
+	}
 	mux.HandleFunc("GET /v1/info", func(w http.ResponseWriter, r *http.Request) {
 		value, err := db.Info(r.Context())
 		if err != nil {
@@ -370,6 +379,20 @@ func NewHandler(db *rollupdb.DB) http.Handler {
 
 const snapshotRoute = "GET /v1/snapshot"
 
+type handlerConfig struct {
+	remoteWrite *RemoteWriteMap
+}
+
+// HandlerOption changes what NewHandler and Serve offer.
+type HandlerOption func(*handlerConfig)
+
+// WithRemoteWrite enables POST /api/v1/write for Prometheus remote write 1.0,
+// with m (checked by LoadRemoteWriteMap) saying where each metric goes, and
+// GET /api/v1/write/stats for its counters.
+func WithRemoteWrite(m *RemoteWriteMap) HandlerOption {
+	return func(c *handlerConfig) { c.remoteWrite = m }
+}
+
 // Listen refuses nonliteral/nonloopback addresses, even if explicitly supplied.
 func Listen(address string) (net.Listener, error) {
 	host, _, err := net.SplitHostPort(address)
@@ -385,8 +408,8 @@ func Listen(address string) (net.Listener, error) {
 
 // Serve waits for graceful shutdown before returning; the caller can then close
 // db. Cancellation also cancels active request contexts. It never closes db.
-func Serve(ctx context.Context, db *rollupdb.DB, listener net.Listener) error {
-	server := &http.Server{Handler: NewHandler(db), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 30 * time.Second, WriteTimeout: 60 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 << 10, BaseContext: func(net.Listener) context.Context { return ctx }}
+func Serve(ctx context.Context, db *rollupdb.DB, listener net.Listener, options ...HandlerOption) error {
+	server := &http.Server{Handler: NewHandler(db, options...), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 30 * time.Second, WriteTimeout: 60 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 << 10, BaseContext: func(net.Listener) context.Context { return ctx }}
 	done := make(chan error, 1)
 	go func() { done <- server.Serve(listener) }()
 	select {
