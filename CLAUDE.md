@@ -3,6 +3,12 @@
 This is the one file that says where the next session starts. Keep it short and
 current. What comes next is agreed with the owner before it goes in here.
 
+## Where the next session starts
+
+RollupDB 0.5.0 is released (batch IDs, atomic snapshots, Prometheus remote
+write; format revision 5) and softdev-plan item 31 is done. Nothing is in
+progress; what comes next is decided with the owner.
+
 ## How this project runs
 
 RollupDB runs on the owner's low-maintenance workflow: Apache 2.0, CI on every
@@ -69,7 +75,7 @@ the whole procedure and the checks to run afterwards.
   and the reference were updated for 0.4.0, with a release post and a fifth
   diagram (sql-query.png).
 
-## In progress: RollupDB 0.5 (softdev-plan item 31, approved by YK 2026-11-02)
+## Done: RollupDB 0.5 (softdev-plan item 31, approved by YK 2026-11-02)
 
 What and why: a retried batch is counted twice today (INTERFACES.md tells
 users not to retry blindly); a killed snapshot leaves a half-written file
@@ -115,8 +121,7 @@ Steps:
 4. [x] Docs and upkeep (README install and remote-write sections, API, INTERFACES, FORMAT, CONTRACT, RELEASE_CANDIDATE).
 5. [x] Independent review, two rounds, fixes. Round 1, no blockers; should-fix, all fixed with tests: a 3 MB remote-write body could decode into GBs of empty series (now 1M series and 1M samples per request, lazy label maps, two requests decoding at once); remote-write batch IDs used a global index, so a map that gained a stream between a 503 and the retry double counted (now per stream); the digest included Version, so a stream update between send and retry turned the retry into a conflict and Prometheus dropped the request (version left out); the digest dropped NaN/Inf batches to SHA-256 of nothing (now value bits, length-prefixed fields, nil and empty dimensions equal); inactive stream and clock jump gave 400. Nits fixed in docs: pruning only by Advance, rename fallback window, record numbering. Round 2, no blockers; two should-fix, fixed: 503 for an inactive stream stalled Prometheus forever for samples that could never be stored (now skipped and counted as `inactive`; clock jump stays 503, documented as stalling the queue); unused labels still amplified memory (only __name__ and mapped labels are decoded). Fresh test/results recorded by the record workflow (1661f27, for b94d372, go1.27.2).
 6. [x] 0.5.0 released by the workflow (commit d71df5b, release run 41433720356). All five archives match SHA256SUMS at the tag and at latest. The downloaded Linux binary printed 0.5.0; ingest-ndjson with --batch-id-prefix run twice on 25 lines kept 25 (second run 3 replayed batches); serve --remote-write took a Prometheus-encoded body (protobuf runtime + cramjam snappy) twice: 204 both times, 100 accepted once, 1 replayed batch, the unmapped series counted, remote write 2.0 refused with 415; snapshot made a revision-5 file with no temp left.
-7. [ ] rollupdb.com post with its own SVG, pages; softdevstudio.com note;
-   softdev-plan log row.
+7. [x] rollupdb.com post "RollupDB 0.5 Counts Retried Batches Once and Takes Prometheus Remote Write" with rollupdb-0-5.svg (rasterized and inspected) and the reference page (site 99e8dce); softdevstudio.com note and listing (08ef870); both Cloudflare Pages deploys succeeded; softdev-plan item 31 done with a log row (cbe497e).
 
 ## Working here
 
